@@ -2,6 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 from amadeus.arena import run_comparison, actual_safe_gate, inspection_hint, MuseArenaAgent, MAX_COMPLETION_TOKENS
+from amadeus.core import safe_gate
 
 
 class ArenaTests(unittest.TestCase):
@@ -96,6 +97,66 @@ class ArenaTests(unittest.TestCase):
         hits = [inspection_hint(s, "shifted") == actual_safe_gate(s, "shifted") for s in range(100)]
         self.assertIn(True, hits)
         self.assertIn(False, hits)
+
+    def test_matched_inspection_is_shared_and_forced_across_policies(self):
+        calls = []
+        def decide(stage, context):
+            calls.append((stage, context))
+            self.assertIsNotNone(context["inspection"])
+            self.assertFalse(context["can_inspect"])
+            if stage == "assess":
+                return {"memory_id": 11, "evidence_id": "inspection-1", "verdict": "uncertain", "rationale": "insufficient"}
+            return {"action": "left", "rationale": "choice"}
+        result = run_comparison(self.memories, [7], decide, inspection_mode="matched")
+        self.assertEqual(result["inspection_mode"], "matched")
+        self.assertEqual(len(result["trials"]), 6)
+        for scenario in ("stable", "shifted"):
+            group = [t for t in result["trials"] if t["scenario"] == scenario]
+            self.assertEqual(len(group), 3)
+            self.assertTrue(all(t["cost"] == 1 and t["inspection_mode"] == "matched" for t in group))
+            self.assertTrue(all(t["inspection"] == group[0]["inspection"] for t in group))
+        counts = {row["strategy"]: row["model_calls"] for row in result["summary"]}
+        self.assertEqual(counts, {"NO_MEMORY": 2, "NAIVE_MEMORY": 2, "VERIFIED_MEMORY": 4})
+        self.assertEqual(sum(stage == "assess" for stage, _ in calls), 2)
+        self.assertTrue(any("additional" in x.lower() for x in result["limitations"]))
+
+    def test_world_versions_and_evaluator_match_core_in_both_modes(self):
+        memories = self.memories + [{**self.memories[0], "id": 12, "seed": 8}]
+        def decide(stage, context):
+            if stage == "assess":
+                return {"memory_id": context["memories"][0]["id"], "evidence_id": "inspection-1",
+                        "verdict": "uncertain", "rationale": "test"}
+            return {"action": "left", "rationale": "test"}
+        for mode in ("optional", "matched"):
+            result = run_comparison(memories, [7, 8], decide, inspection_mode=mode)
+            for trial in result["trials"]:
+                version = "v1" if trial["scenario"] == "stable" else "v2"
+                self.assertEqual(trial["world_version"], version)
+                self.assertEqual(trial["observation"]["world_version"], version)
+                self.assertEqual(actual_safe_gate(trial["seed"], trial["scenario"]), safe_gate(version, trial["seed"]))
+                self.assertEqual(trial["outcome"], "won" if trial["action"] == safe_gate(version, trial["seed"]) else "dead")
+            for seed in (7, 8):
+                for strategy in ("NO_MEMORY", "NAIVE_MEMORY", "VERIFIED_MEMORY"):
+                    group = [t for t in result["trials"] if t["seed"] == seed and t["strategy"] == strategy]
+                    self.assertEqual({t["outcome"] for t in group}, {"won", "dead"})
+
+    def test_default_and_explicit_optional_are_compatible(self):
+        def decide(stage, context):
+            if stage == "assess":
+                return {"memory_id": 11, "evidence_id": "inspection-1", "verdict": "uncertain", "rationale": "test"}
+            return {"action": "left", "rationale": "test"}
+        default = run_comparison(self.memories, [7], decide)
+        explicit = run_comparison(self.memories, [7], decide, inspection_mode="optional")
+        self.assertEqual(default, explicit)
+        self.assertEqual(default["inspection_mode"], "optional")
+        self.assertTrue(all(t["cost"] == (1 if t["strategy"] == "VERIFIED_MEMORY" else 0)
+                            for t in default["trials"]))
+
+    def test_invalid_inspection_mode_does_not_call_model(self):
+        for mode in ("bad", True, None):
+            with self.assertRaises(ValueError):
+                run_comparison(self.memories, [7], self.decide, inspection_mode=mode)
+        self.assertEqual(self.calls, [])
 
     def test_run_limits(self):
         for seeds in ([], [7, 7], [1, 2, 3], [True]):

@@ -20,8 +20,7 @@ MAX_COMPLETION_TOKENS = 1024
 def actual_safe_gate(seed, scenario):
     if scenario not in SCENARIOS:
         raise ValueError("Invalid scenario")
-    baseline = safe_gate("v1", seed)
-    return baseline if scenario == "stable" else {"left": "right", "right": "left"}[baseline]
+    return safe_gate("v1" if scenario == "stable" else "v2", seed)
 
 
 def inspection_hint(seed, scenario):
@@ -54,9 +53,10 @@ def _validate_result(stage, value, memories, can_inspect):
     return copy.deepcopy(value)
 
 
-def _trial(seed, scenario, strategy, frozen, decide):
+def _trial(seed, scenario, strategy, frozen, decide, inspection_mode="optional"):
     memories = [] if strategy == "NO_MEMORY" else copy.deepcopy(frozen)
-    observation = {"world_version": "v2", "seed": seed,
+    version = "v1" if scenario == "stable" else "v2"
+    observation = {"world_version": version, "seed": seed,
                    "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
                    "glyph": {"stable": "amber", "shifted": "violet"}[scenario],
                    "goal": "Reach the exit alive", "actions": ["left", "right", "inspect"],
@@ -91,6 +91,9 @@ def _trial(seed, scenario, strategy, frozen, decide):
         memories = ([m for m in memories if m["id"] == assessment["memory_id"]]
                     if assessment["verdict"] == "applicable" else [])
         choice = call("act", False)
+    elif inspection_mode == "matched":
+        inspection = inspect()
+        choice = call("act", False)
     else:
         choice = call("act", True)
         if choice["action"] == "inspect":
@@ -98,7 +101,8 @@ def _trial(seed, scenario, strategy, frozen, decide):
             choice = call("act", False)
     action = choice["action"]
     outcome = "won" if action == actual_safe_gate(seed, scenario) else "dead"
-    return {"strategy": strategy, "scenario": scenario, "world_version": "v2", "seed": seed,
+    return {"strategy": strategy, "scenario": scenario, "world_version": version, "seed": seed,
+            "inspection_mode": inspection_mode,
             "observation": observation, "training_memory_ids": training_ids,
             "inspection": inspection, "assessment": assessment, "action": action,
             "rationale": choice["rationale"], "outcome": outcome,
@@ -106,12 +110,14 @@ def _trial(seed, scenario, strategy, frozen, decide):
             "evidence": {"action": action, "outcome": outcome, "evaluator": "deterministic gate rule"}}
 
 
-def run_comparison(frozen_memories, seeds, decide):
+def run_comparison(frozen_memories, seeds, decide, inspection_mode="optional"):
     """Run matched policies on identical seeds and the same frozen v1 training set.
 
     Up to two unique seeds, each with at least one recorded v1 memory. Results
     only return after every real or explicitly injected decision has succeeded.
     """
+    if inspection_mode not in ("optional", "matched"):
+        raise ValueError("Inspection mode must be optional or matched")
     if not isinstance(seeds, list) or not 1 <= len(seeds) <= 2 or any(type(s) is not int or not -(2**63) <= s < 2**63 for s in seeds) or len(set(seeds)) != len(seeds):
         raise ValueError("Choose one or two distinct integer seeds")
     if not isinstance(frozen_memories, list):
@@ -127,7 +133,7 @@ def run_comparison(frozen_memories, seeds, decide):
             raise ValueError(f"Seed {seed} needs at least one recorded v1 memory before comparison")
         # Limit prompt size; retain the latest four in stable id order.
         by_seed[seed] = sorted(memories, key=lambda m: m["id"])[-4:]
-    trials = [_trial(seed, scenario, strategy, by_seed[seed], decide)
+    trials = [_trial(seed, scenario, strategy, by_seed[seed], decide, inspection_mode)
               for seed in seeds for scenario in SCENARIOS for strategy in STRATEGIES]
     summary = []
     for strategy in STRATEGIES:
@@ -145,9 +151,11 @@ def run_comparison(frozen_memories, seeds, decide):
                                      "wins": sum(x["outcome"] == "won" for x in subset),
                                      "deaths": sum(x["outcome"] == "dead" for x in subset),
                                      "inspection_cost": sum(x["cost"] for x in subset)})
-    return {"trials": trials, "summary": summary, "scenario_summary": scenario_summary,
+    return {"inspection_mode": inspection_mode, "trials": trials, "summary": summary, "scenario_summary": scenario_summary,
             "limitations": ["Inspection is noisy and costs one unit; it is not guaranteed correct.",
                             "Seeds pair the deterministic worlds, but model decisions are stochastic.",
+                            "VERIFIED_MEMORY makes an additional model call to assess applicability.",
+                            "World version is visible to the model; stable uses v1 and shifted uses v2.",
                             "Small samples do not establish a scientific performance advantage.",
                             "Memories are frozen before all trials; trials do not train each other."]}
 
