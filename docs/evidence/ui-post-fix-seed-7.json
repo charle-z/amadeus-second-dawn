@@ -1,0 +1,588 @@
+{
+  "description": "Real UI run after sanitizing uncertain and inapplicable assessments; not a statistical benchmark.",
+  "model": "muse-spark-1.3",
+  "arena_git_blob": "f21a63b41ee49bfb27cdcf48f05bf84f6c5c8933",
+  "training_memories": [
+    {
+      "id": 1,
+      "generation_id": 1,
+      "world_version": "v1",
+      "seed": 7,
+      "action": "left",
+      "outcome": "dead",
+      "evidence": {
+        "observation": {
+          "world_version": "v1",
+          "seed": 7,
+          "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+          "actions": [
+            "left",
+            "right"
+          ],
+          "goal": "Reach the exit alive."
+        },
+        "action": "left",
+        "result": "dead",
+        "evaluator": "deterministic gate rule"
+      },
+      "created_at": "2026-11-04T21:43:12.085970+00:00"
+    },
+    {
+      "id": 2,
+      "generation_id": 2,
+      "world_version": "v1",
+      "seed": 7,
+      "action": "right",
+      "outcome": "won",
+      "evidence": {
+        "observation": {
+          "world_version": "v1",
+          "seed": 7,
+          "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+          "actions": [
+            "left",
+            "right"
+          ],
+          "goal": "Reach the exit alive."
+        },
+        "action": "right",
+        "result": "won",
+        "evaluator": "deterministic gate rule"
+      },
+      "created_at": "2026-11-04T21:45:28.018023+00:00"
+    }
+  ],
+  "comparison": {
+    "trials": [
+      {
+        "strategy": "NO_MEMORY",
+        "scenario": "stable",
+        "world_version": "v2",
+        "seed": 7,
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+          "glyph": "amber",
+          "goal": "Reach the exit alive",
+          "actions": [
+            "left",
+            "right",
+            "inspect"
+          ],
+          "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+        },
+        "training_memory_ids": [],
+        "inspection": null,
+        "assessment": null,
+        "action": "left",
+        "rationale": "No reliable information, inspection is costly and imperfect, so choose directly.",
+        "outcome": "dead",
+        "cost": 0,
+        "model_calls": [
+          {
+            "stage": "act",
+            "response": {
+              "action": "left",
+              "rationale": "No reliable information, inspection is costly and imperfect, so choose directly."
+            },
+            "usage": {
+              "completion_tokens": 282,
+              "prompt_tokens": 163,
+              "total_tokens": 445,
+              "completion_tokens_details": {
+                "reasoning_tokens": 247
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        ],
+        "evidence": {
+          "action": "left",
+          "outcome": "dead",
+          "evaluator": "deterministic gate rule"
+        }
+      },
+      {
+        "strategy": "NAIVE_MEMORY",
+        "scenario": "stable",
+        "world_version": "v2",
+        "seed": 7,
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+          "glyph": "amber",
+          "goal": "Reach the exit alive",
+          "actions": [
+            "left",
+            "right",
+            "inspect"
+          ],
+          "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+        },
+        "training_memory_ids": [
+          1,
+          2
+        ],
+        "inspection": {
+          "id": "inspection-1",
+          "hint": "left",
+          "cost": 1,
+          "reliability": "imperfect; can be wrong"
+        },
+        "assessment": null,
+        "action": "left",
+        "rationale": "Prior memories are from world_version v1 where right won, but current world is v2 which may have changed, so v1 memories are stale. The only current evidence is the imperfect inspection hint favoring left.",
+        "outcome": "dead",
+        "cost": 1,
+        "model_calls": [
+          {
+            "stage": "act",
+            "response": {
+              "action": "inspect",
+              "rationale": "Memories are from world_version v1 where right won, but current observation is world_version v2 with explicit warning world may have changed. Trusting naive memory is unsafe, so pay cost to inspect for current information."
+            },
+            "usage": {
+              "completion_tokens": 367,
+              "prompt_tokens": 453,
+              "total_tokens": 820,
+              "completion_tokens_details": {
+                "reasoning_tokens": 302
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          },
+          {
+            "stage": "act",
+            "response": {
+              "action": "left",
+              "rationale": "Prior memories are from world_version v1 where right won, but current world is v2 which may have changed, so v1 memories are stale. The only current evidence is the imperfect inspection hint favoring left."
+            },
+            "usage": {
+              "completion_tokens": 308,
+              "prompt_tokens": 483,
+              "total_tokens": 791,
+              "completion_tokens_details": {
+                "reasoning_tokens": 244
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        ],
+        "evidence": {
+          "action": "left",
+          "outcome": "dead",
+          "evaluator": "deterministic gate rule"
+        }
+      },
+      {
+        "strategy": "VERIFIED_MEMORY",
+        "scenario": "stable",
+        "world_version": "v2",
+        "seed": 7,
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+          "glyph": "amber",
+          "goal": "Reach the exit alive",
+          "actions": [
+            "left",
+            "right",
+            "inspect"
+          ],
+          "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+        },
+        "training_memory_ids": [
+          1,
+          2
+        ],
+        "inspection": {
+          "id": "inspection-1",
+          "hint": "left",
+          "cost": 1,
+          "reliability": "imperfect; can be wrong"
+        },
+        "assessment": {
+          "evidence_id": "inspection-1",
+          "memory_id": 1,
+          "rationale": "Memory 1 is from v1 where left was dead; current is v2 which may have changed, and inspection-1 hints left is safe but is explicitly imperfect and can be wrong, so insufficient to confirm applicability or inapplicability.",
+          "verdict": "uncertain"
+        },
+        "action": "left",
+        "rationale": "No verified memories available; only imperfect hint points left, so follow best available evidence.",
+        "outcome": "dead",
+        "cost": 1,
+        "model_calls": [
+          {
+            "stage": "assess",
+            "response": {
+              "evidence_id": "inspection-1",
+              "memory_id": 1,
+              "rationale": "Memory 1 is from v1 where left was dead; current is v2 which may have changed, and inspection-1 hints left is safe but is explicitly imperfect and can be wrong, so insufficient to confirm applicability or inapplicability.",
+              "verdict": "uncertain"
+            },
+            "usage": {
+              "completion_tokens": 465,
+              "prompt_tokens": 484,
+              "total_tokens": 949,
+              "completion_tokens_details": {
+                "reasoning_tokens": 379
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          },
+          {
+            "stage": "act",
+            "response": {
+              "action": "left",
+              "rationale": "No verified memories available; only imperfect hint points left, so follow best available evidence."
+            },
+            "usage": {
+              "completion_tokens": 203,
+              "prompt_tokens": 209,
+              "total_tokens": 412,
+              "completion_tokens_details": {
+                "reasoning_tokens": 165
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 181
+              }
+            }
+          }
+        ],
+        "evidence": {
+          "action": "left",
+          "outcome": "dead",
+          "evaluator": "deterministic gate rule"
+        }
+      },
+      {
+        "strategy": "NO_MEMORY",
+        "scenario": "shifted",
+        "world_version": "v2",
+        "seed": 7,
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+          "glyph": "violet",
+          "goal": "Reach the exit alive",
+          "actions": [
+            "left",
+            "right",
+            "inspect"
+          ],
+          "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+        },
+        "training_memory_ids": [],
+        "inspection": {
+          "id": "inspection-1",
+          "hint": "right",
+          "cost": 1,
+          "reliability": "imperfect; can be wrong"
+        },
+        "assessment": null,
+        "action": "right",
+        "rationale": "Only signal is inspection hint favoring right; despite imperfection, following it maximizes chance vs random with no other info.",
+        "outcome": "dead",
+        "cost": 1,
+        "model_calls": [
+          {
+            "stage": "act",
+            "response": {
+              "action": "inspect",
+              "rationale": "No prior memories and no inspection hint yet, so gather imperfect information before committing to a fatal gate choice."
+            },
+            "usage": {
+              "completion_tokens": 283,
+              "prompt_tokens": 164,
+              "total_tokens": 447,
+              "completion_tokens_details": {
+                "reasoning_tokens": 241
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 51
+              }
+            }
+          },
+          {
+            "stage": "act",
+            "response": {
+              "action": "right",
+              "rationale": "Only signal is inspection hint favoring right; despite imperfection, following it maximizes chance vs random with no other info."
+            },
+            "usage": {
+              "completion_tokens": 244,
+              "prompt_tokens": 194,
+              "total_tokens": 438,
+              "completion_tokens_details": {
+                "reasoning_tokens": 199
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        ],
+        "evidence": {
+          "action": "right",
+          "outcome": "dead",
+          "evaluator": "deterministic gate rule"
+        }
+      },
+      {
+        "strategy": "NAIVE_MEMORY",
+        "scenario": "shifted",
+        "world_version": "v2",
+        "seed": 7,
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+          "glyph": "violet",
+          "goal": "Reach the exit alive",
+          "actions": [
+            "left",
+            "right",
+            "inspect"
+          ],
+          "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+        },
+        "training_memory_ids": [
+          1,
+          2
+        ],
+        "inspection": {
+          "id": "inspection-1",
+          "hint": "right",
+          "cost": 1,
+          "reliability": "imperfect; can be wrong"
+        },
+        "assessment": null,
+        "action": "right",
+        "rationale": "World is v2 while memories are v1 and stated may have changed, so stale memory of right-won/left-dead is unreliable; follow current inspection hint for v2 which suggests right.",
+        "outcome": "dead",
+        "cost": 1,
+        "model_calls": [
+          {
+            "stage": "act",
+            "response": {
+              "action": "inspect",
+              "rationale": "Memories show right won in v1, but current world is v2 and scene states world may have changed, so v1 memory is unreliable. Inspect to gather current information before committing to a fatal gate."
+            },
+            "usage": {
+              "completion_tokens": 332,
+              "prompt_tokens": 454,
+              "total_tokens": 786,
+              "completion_tokens_details": {
+                "reasoning_tokens": 269
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 435
+              }
+            }
+          },
+          {
+            "stage": "act",
+            "response": {
+              "action": "right",
+              "rationale": "World is v2 while memories are v1 and stated may have changed, so stale memory of right-won/left-dead is unreliable; follow current inspection hint for v2 which suggests right."
+            },
+            "usage": {
+              "completion_tokens": 506,
+              "prompt_tokens": 484,
+              "total_tokens": 990,
+              "completion_tokens_details": {
+                "reasoning_tokens": 445
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        ],
+        "evidence": {
+          "action": "right",
+          "outcome": "dead",
+          "evaluator": "deterministic gate rule"
+        }
+      },
+      {
+        "strategy": "VERIFIED_MEMORY",
+        "scenario": "shifted",
+        "world_version": "v2",
+        "seed": 7,
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+          "glyph": "violet",
+          "goal": "Reach the exit alive",
+          "actions": [
+            "left",
+            "right",
+            "inspect"
+          ],
+          "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+        },
+        "training_memory_ids": [
+          1,
+          2
+        ],
+        "inspection": {
+          "id": "inspection-1",
+          "hint": "right",
+          "cost": 1,
+          "reliability": "imperfect; can be wrong"
+        },
+        "assessment": {
+          "evidence_id": "inspection-1",
+          "memory_id": 2,
+          "rationale": "Memory 2 is from world_version v1, current is v2 which may have changed. Inspection-1 hints 'right' which is consistent with memory 2, but inspection is stated imperfect and can be wrong, so insufficient to verify applicability.",
+          "verdict": "uncertain"
+        },
+        "action": "right",
+        "rationale": "No verified memories available; only imperfect hint points to right, so follow it as best evidence.",
+        "outcome": "dead",
+        "cost": 1,
+        "model_calls": [
+          {
+            "stage": "assess",
+            "response": {
+              "evidence_id": "inspection-1",
+              "memory_id": 2,
+              "rationale": "Memory 2 is from world_version v1, current is v2 which may have changed. Inspection-1 hints 'right' which is consistent with memory 2, but inspection is stated imperfect and can be wrong, so insufficient to verify applicability.",
+              "verdict": "uncertain"
+            },
+            "usage": {
+              "completion_tokens": 415,
+              "prompt_tokens": 485,
+              "total_tokens": 900,
+              "completion_tokens_details": {
+                "reasoning_tokens": 327
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          },
+          {
+            "stage": "act",
+            "response": {
+              "action": "right",
+              "rationale": "No verified memories available; only imperfect hint points to right, so follow it as best evidence."
+            },
+            "usage": {
+              "completion_tokens": 209,
+              "prompt_tokens": 210,
+              "total_tokens": 419,
+              "completion_tokens_details": {
+                "reasoning_tokens": 169
+              },
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              }
+            }
+          }
+        ],
+        "evidence": {
+          "action": "right",
+          "outcome": "dead",
+          "evaluator": "deterministic gate rule"
+        }
+      }
+    ],
+    "summary": [
+      {
+        "strategy": "NO_MEMORY",
+        "trials": 2,
+        "wins": 0,
+        "deaths": 2,
+        "inspection_cost": 1,
+        "model_calls": 3
+      },
+      {
+        "strategy": "NAIVE_MEMORY",
+        "trials": 2,
+        "wins": 0,
+        "deaths": 2,
+        "inspection_cost": 2,
+        "model_calls": 4
+      },
+      {
+        "strategy": "VERIFIED_MEMORY",
+        "trials": 2,
+        "wins": 0,
+        "deaths": 2,
+        "inspection_cost": 2,
+        "model_calls": 4
+      }
+    ],
+    "scenario_summary": [
+      {
+        "strategy": "NO_MEMORY",
+        "scenario": "stable",
+        "trials": 1,
+        "wins": 0,
+        "deaths": 1,
+        "inspection_cost": 0
+      },
+      {
+        "strategy": "NO_MEMORY",
+        "scenario": "shifted",
+        "trials": 1,
+        "wins": 0,
+        "deaths": 1,
+        "inspection_cost": 1
+      },
+      {
+        "strategy": "NAIVE_MEMORY",
+        "scenario": "stable",
+        "trials": 1,
+        "wins": 0,
+        "deaths": 1,
+        "inspection_cost": 1
+      },
+      {
+        "strategy": "NAIVE_MEMORY",
+        "scenario": "shifted",
+        "trials": 1,
+        "wins": 0,
+        "deaths": 1,
+        "inspection_cost": 1
+      },
+      {
+        "strategy": "VERIFIED_MEMORY",
+        "scenario": "stable",
+        "trials": 1,
+        "wins": 0,
+        "deaths": 1,
+        "inspection_cost": 1
+      },
+      {
+        "strategy": "VERIFIED_MEMORY",
+        "scenario": "shifted",
+        "trials": 1,
+        "wins": 0,
+        "deaths": 1,
+        "inspection_cost": 1
+      }
+    ],
+    "limitations": [
+      "Inspection is noisy and costs one unit; it is not guaranteed correct.",
+      "Seeds pair the deterministic worlds, but model decisions are stochastic.",
+      "Small samples do not establish a scientific performance advantage.",
+      "Memories are frozen before all trials; trials do not train each other."
+    ]
+  }
+}

@@ -4,6 +4,7 @@ import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .arena import MAX_COMPLETION_TOKENS
 from .core import validate_decision
 
 
@@ -18,7 +19,7 @@ class MuseAgent:
         prompt = ("Choose exactly one action in this world. Treat past observations as evidence, "
                   "not as a guarantee. Explain briefly; do not claim to decide the outcome.\n" +
                   json.dumps({"observation": observation, "memories": memories}, ensure_ascii=False))
-        payload = {"model": "muse-spark-1.3", "max_completion_tokens": 512,
+        payload = {"model": "muse-spark-1.3", "max_completion_tokens": MAX_COMPLETION_TOKENS,
                    "reasoning_effort": "minimal",
                    "messages": [{"role": "user", "content": prompt}],
                    "response_format": {"type": "json_schema", "json_schema": {

@@ -21,6 +21,7 @@ class MuseTests(unittest.TestCase):
         request = send.call_args.args[0]
         body = json.loads(request.data)
         self.assertEqual(body["model"], "muse-spark-1.3")
+        self.assertEqual(body["max_completion_tokens"], 1024)
         self.assertEqual(body["response_format"]["json_schema"]["strict"], True)
         self.assertNotIn("test-only", request.data.decode())
         self.assertEqual(agent.last_usage["total_tokens"], 12)
