@@ -1,8 +1,9 @@
 'use strict';
 const $ = id => document.getElementById(id);
 let selected = null;
-let current = {generations: [], memories: [], comparisons: []};
+let current = {generations: [], memories: [], comparisons: [], cell_runs: []};
 let running = false;
+let lastPartialCellRun = null;
 
 function el(tag, text, className) {
   const n = document.createElement(tag);
@@ -43,7 +44,7 @@ function render() {
   $('restart').disabled = !gen;
   $('generation-count').textContent = `${current.generations.length} GENERATIONS`;
   $('memory-count').textContent = String(current.memories.length);
-  renderGenerations(); renderMemories(); renderComparisons();
+  renderGenerations(); renderMemories(); renderComparisons(); renderCells();
 }
 function renderGenerations() {
   const container = $('generations'); clear(container);
@@ -86,6 +87,31 @@ function renderMemories() {
   if (seeds.map(String).includes(previous)) $('compare-seed').value = previous;
   $('compare-seed').disabled = !seeds.length || running;
   $('compare').disabled = !seeds.length || running;
+  $('cells').disabled = !seeds.length || running;
+}
+function renderCells() {
+  const capacity = current.cell_capacity;
+  const reserved = current.cell_reservations;
+  if (capacity && reserved) {
+    $('cell-capacity').textContent = `ACTIVE RESERVATIONS: ${reserved.slots}/${capacity.max_concurrent_cells} CELLS · ${reserved.calls}/${capacity.max_calls} CALLS · ${reserved.output_tokens}/${capacity.max_output_tokens} MAX OUTPUT TOKENS`;
+  }
+  const container = $('cell-list'); clear(container);
+  const runs = [...(lastPartialCellRun ? [lastPartialCellRun] : []), ...(current.cell_runs || [])];
+  if (!runs.length) { container.textContent = 'No cell runs yet.'; container.classList.add('empty'); return; }
+  for (const run of runs) {
+    const group = el('div', null, 'trial');
+    group.append(el('strong', `SEED ${run.seed} · ${run.status.toUpperCase()}${run.status === 'partial' ? ' — NOT SAVED' : ''}`));
+    for (const cell of run.cells || []) {
+      group.append(el('div', `${cell.strategy} · ${cell.status.toUpperCase()} · ${cell.calls} calls${cell.error_type ? ` · ${cell.error_type}` : ''}`, 'sub'));
+      for (const trial of cell.trials || []) {
+        group.append(el('div', `${trial.scenario} · ${trial.outcome} · ${trial.action}`, `event outcome-${trial.outcome}`));
+      }
+      group.append(details('Cell decisions and evidence', cell));
+    }
+    if (run.reservation) group.append(details('Reserved capacity and limits', run.reservation));
+    if (run.limitations) group.append(details('Limitations', run.limitations));
+    container.append(group);
+  }
 }
 function renderComparisons() {
   const container = $('comparison-list'); clear(container);
@@ -107,12 +133,16 @@ function renderComparisons() {
 async function action(button, path, data, waitText) {
   if (path !== '/api/restart') running = true;
   render(); button.disabled = true; notify(waitText);
+  const timer = path === '/api/cells' ? setInterval(() => refresh().catch(() => {}), 2000) : null;
   try {
     const result = await api(path, data);
     if (result.generation) selected = result.generation.id;
-    notify(path === '/api/step' ? `Muse chose ${result.decision.action}; the evaluator reported ${result.status}.` : path === '/api/comparison' ? 'Comparison complete. Results are from real calls.' : 'Generation ready.');
+    if (path === '/api/cells') {
+      lastPartialCellRun = result.status === 'partial' ? result : null;
+      notify(result.status === 'complete' ? 'Both cells finished. Results saved.' : 'A cell failed. Partial results are visible but were not saved.', result.status !== 'complete');
+    } else notify(path === '/api/step' ? `Muse chose ${result.decision.action}; the evaluator reported ${result.status}.` : path === '/api/comparison' ? 'Comparison complete. Results are from real calls.' : 'Generation ready.');
   } catch (error) { notify(error.message, true); }
-  finally { if (path !== '/api/restart') running = false; await refresh().catch(error => notify(error.message, true)); }
+  finally { if (timer) clearInterval(timer); if (path !== '/api/restart') running = false; await refresh().catch(error => notify(error.message, true)); }
 }
 $('start').onclick = () => {
   const seed = Number($('seed').value);
@@ -122,4 +152,5 @@ $('start').onclick = () => {
 $('step').onclick = () => action($('step'), '/api/step', {generation_id: selected}, 'Waiting for a real Muse decision…');
 $('restart').onclick = () => action($('restart'), '/api/restart', {generation_id: selected}, 'Ending generation and restarting…');
 $('compare').onclick = () => action($('compare'), '/api/comparison', {seeds: [Number($('compare-seed').value)]}, 'Running comparison with real Muse calls. This may take minutes…');
+$('cells').onclick = () => action($('cells'), '/api/cells', {seed: Number($('compare-seed').value)}, 'Running two cells concurrently with real Muse calls. This may take minutes…');
 refresh().catch(error => notify(error.message, true));

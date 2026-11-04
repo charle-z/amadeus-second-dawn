@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .core import Experiment
 from .muse import MuseAgent
+from .cells import CellCoordinator, MAX_SLOTS, MAX_CALLS, MAX_OUTPUT, CALLS_PER_CELL
 
 WEB = Path(__file__).resolve().parent.parent / 'web'
 STATIC = {'/': ('index.html', 'text/html; charset=utf-8'),
@@ -20,9 +21,11 @@ class Server(ThreadingHTTPServer):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.busy = threading.Lock()
+        self.cells = CellCoordinator()
         exp = Experiment(self.db_path)
         try:
             exp.db.execute('CREATE TABLE IF NOT EXISTS ui_comparisons (id INTEGER PRIMARY KEY, result TEXT NOT NULL)')
+            exp.db.execute('CREATE TABLE IF NOT EXISTS ui_cell_runs (id INTEGER PRIMARY KEY, result TEXT NOT NULL)')
             exp.db.commit()
         finally:
             exp.close()
@@ -78,7 +81,12 @@ class Handler(BaseHTTPRequestHandler):
                 generations.append(generation)
             comparisons = [json.loads(row['result']) for row in
                            exp.db.execute('SELECT result FROM ui_comparisons ORDER BY id DESC LIMIT 10')]
-            self.send_json(200, {'generations': generations, 'memories': exp.memories(), 'comparisons': comparisons})
+            cell_runs = [json.loads(row['result']) for row in
+                         exp.db.execute('SELECT result FROM ui_cell_runs ORDER BY id DESC LIMIT 10')]
+            self.send_json(200, {'generations': generations, 'memories': exp.memories(), 'comparisons': comparisons,
+                                 'cell_runs': cell_runs, 'cell_reservations': self.server.cells.snapshot(),
+                                 'cell_capacity': {'max_concurrent_cells': MAX_SLOTS, 'max_calls': MAX_CALLS,
+                                                   'max_output_tokens': MAX_OUTPUT, 'per_cell_calls': CALLS_PER_CELL}})
         finally:
             exp.close()
 
@@ -137,6 +145,19 @@ class Handler(BaseHTTPRequestHandler):
                     result = run_comparison(exp.memories(), seeds, MuseArenaAgent())
                     with exp.db:
                         exp.db.execute('INSERT INTO ui_comparisons(result) VALUES (?)', (json.dumps(result),))
+                    return result
+                finally:
+                    self.server.busy.release()
+            if self.path == '/api/cells' and set(data) == {'seed'}:
+                seed = integer(data['seed'], -1000000000, 1000000000)
+                if not self.server.busy.acquire(blocking=False):
+                    raise ValueError('Another model run is in progress')
+                try:
+                    from .arena import MuseArenaAgent
+                    result = self.server.cells.run(exp.memories(), seed, lambda strategy: MuseArenaAgent())
+                    if result['status'] == 'complete':
+                        with exp.db:
+                            exp.db.execute('INSERT INTO ui_cell_runs(result) VALUES (?)', (json.dumps(result),))
                     return result
                 finally:
                     self.server.busy.release()

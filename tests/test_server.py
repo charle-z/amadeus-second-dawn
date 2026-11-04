@@ -82,6 +82,47 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 502)
         self.assertEqual(self.request('/api/state')['comparisons'], [result])
 
+    def test_cells_persist_complete_but_return_partial_without_saving(self):
+        complete = {'status': 'complete', 'seed': 7, 'cells': [], 'reservation': {}}
+        partial = {'status': 'partial', 'seed': 7, 'cells': [{'status': 'failed', 'error_type': 'RuntimeError'}]}
+        with patch.object(self.server.cells, 'run', side_effect=[complete, partial]):
+            self.assertEqual(self.request('/api/cells', {'seed': 7}), complete)
+            self.assertEqual(self.request('/api/cells', {'seed': 7}), partial)
+        state = self.request('/api/state')
+        self.assertEqual(state['cell_runs'], [complete])
+        self.assertEqual(state['cell_capacity']['max_concurrent_cells'], 2)
+
+    def test_cells_share_busy_gate_and_validate_input(self):
+        for data in ({'seed': True}, {'seed': 1, 'unexpected': True}):
+            with self.assertRaises(HTTPError) as ctx:
+                self.request('/api/cells', data)
+            self.assertEqual(ctx.exception.code, 400)
+        self.server.busy.acquire()
+        try:
+            with patch.object(self.server.cells, 'run') as run:
+                with self.assertRaises(HTTPError) as ctx:
+                    self.request('/api/cells', {'seed': 7})
+                self.assertEqual(ctx.exception.code, 400)
+                run.assert_not_called()
+        finally:
+            self.server.busy.release()
+
+    def test_cells_http_runs_real_arena_with_test_only_adapter(self):
+        generation = self.request('/api/start', {'version': 'v1', 'seed': 7})['generation']
+        with patch('amadeus.server.MuseAgent', return_value=lambda obs, mem: {'action': 'left', 'rationale': 'test'}):
+            self.request('/api/step', {'generation_id': generation['id']})
+        def decide(stage, context):
+            if stage == 'assess':
+                return {'memory_id': context['memories'][0]['id'], 'evidence_id': 'inspection-1',
+                        'verdict': 'uncertain', 'rationale': 'test observation'}
+            return {'action': 'left', 'rationale': 'test choice'}
+        with patch('amadeus.arena.MuseArenaAgent', side_effect=lambda: decide):
+            result = self.request('/api/cells', {'seed': 7})
+        self.assertEqual(result['status'], 'complete')
+        self.assertEqual({c['strategy'] for c in result['cells']}, {'NAIVE_MEMORY', 'VERIFIED_MEMORY'})
+        self.assertTrue(all(len(c['trials']) == 2 for c in result['cells']))
+        self.assertEqual(self.request('/api/state')['cell_runs'], [result])
+
 
 if __name__ == '__main__':
     unittest.main()
