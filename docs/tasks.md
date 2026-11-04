@@ -9,4 +9,5 @@
 - [x] Independent mathematical review and bounded exact resource-planning preview.
 - [x] Correct world-version mismatch and add matched-inspection comparison.
 - [x] Verify one new matched trial with two real Muse calls; no three-policy result claimed.
-- [ ] Publish these new changes and finish the official submission.
+- [x] Publish the experiment and planning changes.
+- [ ] Finish the official submission after user sign-in.

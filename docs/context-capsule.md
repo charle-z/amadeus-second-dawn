@@ -11,7 +11,7 @@ Ship a reproducible demonstration of memory applicability in deterministic chang
 - No fabricated results or concealed fallbacks; changing and stable rules must both be tested.
 - Store MODEL_API_KEY outside the repository; request budgets limit calls/tokens but are not provider-side spend caps.
 - Existing similar work includes EvoArena/EvoMem and GAMBIT; the project is an auditable demonstration, not a novelty claim.
-- GitHub is public, and commits through f218e38 were published; publish and verify the current changes before delivery. Historical comparisons used inconsistent world-version labels; their evidence remains unchanged.
+- GitHub is public and the experiment and planning changes were published through Step 09. Historical comparisons used inconsistent world-version labels; their evidence remains unchanged.
 
 ## Next
 Verify and publish the current revision, record or use the labeled replay, and complete the event submission before 9 p.m. Colombia; the event form requires the user to sign in. No claim of general superiority: both recorded comparisons have tiny samples.
