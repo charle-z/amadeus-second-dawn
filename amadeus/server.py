@@ -150,8 +150,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not self.server.busy.acquire(blocking=False):
                     raise ValueError('Another model run is in progress')
                 try:
-                    from .arena import run_comparison, MuseArenaAgent
-                    result = run_comparison(exp.memories(), seeds, MuseArenaAgent(), inspection_mode=mode)
+                    from .arena import run_comparison, MuseArenaAgent, ComparisonInterrupted
+                    try:
+                        result = run_comparison(exp.memories(), seeds, MuseArenaAgent(), inspection_mode=mode)
+                    except ComparisonInterrupted as exc:
+                        result = exc.partial_result
                     with exp.db:
                         exp.db.execute('INSERT INTO ui_comparisons(result) VALUES (?)', (json.dumps(result),))
                     return result
@@ -164,9 +167,10 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     from .arena import MuseArenaAgent
                     result = self.server.cells.run(exp.memories(), seed, lambda strategy: MuseArenaAgent())
-                    if result['status'] == 'complete':
-                        with exp.db:
-                            exp.db.execute('INSERT INTO ui_cell_runs(result) VALUES (?)', (json.dumps(result),))
+                    if result['status'] not in ('complete', 'partial'):
+                        raise RuntimeError('Invalid cell run status')
+                    with exp.db:
+                        exp.db.execute('INSERT INTO ui_cell_runs(result) VALUES (?)', (json.dumps(result),))
                     return result
                 finally:
                     self.server.busy.release()

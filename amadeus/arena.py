@@ -17,6 +17,57 @@ SCENARIOS = ("stable", "shifted")
 MAX_COMPLETION_TOKENS = 1024
 
 
+class ComparisonInterrupted(RuntimeError):
+    """An in-progress comparison failed; completed evidence is in partial_result."""
+    def __init__(self, partial_result):
+        super().__init__("Comparison interrupted; partial evidence is available")
+        self.partial_result = partial_result
+
+
+class InvalidComparisonDecision(ComparisonInterrupted, ValueError):
+    """A model decision was invalid; also preserves the ValueError contract."""
+
+
+def _sanitize_usage(value):
+    """Keep provider token counts only; unknown is None and known zero stays zero."""
+    if not isinstance(value, dict):
+        return None
+    result = {}
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        item = value.get(key)
+        if type(item) is int and 0 <= item <= 10000000:
+            result[key] = item
+    for key, count_keys in (("completion_tokens_details", ("reasoning_tokens",)),
+                            ("prompt_tokens_details", ("cached_tokens",))):
+        details = value.get(key)
+        if isinstance(details, dict):
+            clean = {k: details[k] for k in count_keys
+                     if type(details.get(k)) is int and 0 <= details[k] <= 10000000}
+            if clean:
+                result[key] = clean
+    return result or None
+
+
+class _TrackedDecision:
+    """Keep validated calls from the currently executing trial only."""
+    def __init__(self, decide):
+        self.decide = decide
+        self.stage = None
+        self.last_usage = None
+        self.calls = []
+
+    def __call__(self, stage, context):
+        self.stage = stage
+        self.last_usage = None
+        try:
+            value = self.decide(stage, context)
+        finally:
+            self.last_usage = _sanitize_usage(getattr(self.decide, "last_usage", None))
+        valid = _validate_result(stage, value, context["memories"], context["can_inspect"])
+        self.calls.append({"stage": stage, "response": valid, "usage": copy.deepcopy(self.last_usage)})
+        return valid
+
+
 def actual_safe_gate(seed, scenario):
     if scenario not in SCENARIOS:
         raise ValueError("Invalid scenario")
@@ -133,8 +184,26 @@ def run_comparison(frozen_memories, seeds, decide, inspection_mode="optional"):
             raise ValueError(f"Seed {seed} needs at least one recorded v1 memory before comparison")
         # Limit prompt size; retain the latest four in stable id order.
         by_seed[seed] = sorted(memories, key=lambda m: m["id"])[-4:]
-    trials = [_trial(seed, scenario, strategy, by_seed[seed], decide, inspection_mode)
-              for seed in seeds for scenario in SCENARIOS for strategy in STRATEGIES]
+    trials = []
+    for seed in seeds:
+        for scenario in SCENARIOS:
+            for strategy in STRATEGIES:
+                tracked = _TrackedDecision(decide)
+                try:
+                    trials.append(_trial(seed, scenario, strategy, by_seed[seed], tracked, inspection_mode))
+                except Exception as exc:
+                    kind = type(exc).__name__
+                    if kind not in ("RuntimeError", "ValueError", "TimeoutError", "OSError"):
+                        kind = "ModelError"
+                    partial = {"status": "partial", "inspection_mode": inspection_mode,
+                               "planned_trials": len(seeds) * len(SCENARIOS) * len(STRATEGIES),
+                               "completed_trials": len(trials), "trials": trials,
+                               "failed_attempt": {"seed": seed, "scenario": scenario,
+                                   "strategy": strategy, "stage": tracked.stage,
+                                   "model_calls": tracked.calls, "usage": tracked.last_usage,
+                                   "error_type": kind}}
+                    error_class = InvalidComparisonDecision if isinstance(exc, ValueError) else ComparisonInterrupted
+                    raise error_class(partial) from None
     summary = []
     for strategy in STRATEGIES:
         subset = [x for x in trials if x["strategy"] == strategy]
@@ -202,6 +271,7 @@ class MuseArenaAgent:
             raise RuntimeError(f"Meta returned a malformed response envelope (stage={stage})") from None
         if not isinstance(body, dict):
             raise RuntimeError(f"Meta returned a malformed response envelope (stage={stage})")
+        self.last_usage = _sanitize_usage(body.get("usage"))
         usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}
         details = usage.get("completion_tokens_details")
         details = details if isinstance(details, dict) else {}
@@ -226,5 +296,4 @@ class MuseArenaAgent:
             result = json.loads(choice["message"]["content"])
         except (KeyError, TypeError, json.JSONDecodeError):
             raise RuntimeError(f"Meta returned invalid decision JSON ({diagnostic(reason)})") from None
-        self.last_usage = body.get("usage")
         return result

@@ -3,7 +3,6 @@ const $ = id => document.getElementById(id);
 let selected = null;
 let current = {generations: [], memories: [], comparisons: [], cell_runs: []};
 let running = false;
-let lastPartialCellRun = null;
 
 function el(tag, text, className) {
   const n = document.createElement(tag);
@@ -97,11 +96,12 @@ function renderCells() {
     $('cell-capacity').textContent = `ACTIVE RESERVATIONS: ${reserved.slots}/${capacity.max_concurrent_cells} CELLS · ${reserved.calls}/${capacity.max_calls} CALLS · ${reserved.output_tokens}/${capacity.max_output_tokens} MAX OUTPUT TOKENS`;
   }
   const container = $('cell-list'); clear(container);
-  const runs = [...(lastPartialCellRun ? [lastPartialCellRun] : []), ...(current.cell_runs || [])];
+  const runs = current.cell_runs || [];
   if (!runs.length) { container.textContent = 'No cell runs yet.'; container.classList.add('empty'); return; }
   for (const run of runs) {
     const group = el('div', null, 'trial');
-    group.append(el('strong', `SEED ${run.seed} · ${run.status.toUpperCase()}${run.status === 'partial' ? ' — NOT SAVED' : ''}`));
+    group.append(el('strong', `SEED ${run.seed} · ${run.status.toUpperCase()}${run.status === 'partial' ? ' — INCOMPLETE' : ''}`));
+    if (run.inspection_mode) group.append(el('div', `INSPECTION: ${run.inspection_mode.toUpperCase()}`, 'gen-meta'));
     if ((run.cells || []).some(cell => (cell.trials || []).some(trial => !trial.inspection_mode))) group.append(el('div', 'HISTORICAL: earlier world version labels were inconsistent', 'gen-meta'));
     for (const cell of run.cells || []) {
       group.append(el('div', `${cell.strategy} · ${cell.status.toUpperCase()} · ${cell.calls} calls${cell.error_type ? ` · ${cell.error_type}` : ''}`, 'sub'));
@@ -121,7 +121,9 @@ function renderComparisons() {
   for (const comparison of current.comparisons) {
     const group = el('div');
     group.append(el('div', comparison.inspection_mode ? `INSPECTION: ${comparison.inspection_mode.toUpperCase()}` : 'HISTORICAL: earlier world version labels were inconsistent', 'gen-meta'));
-    group.append(details('Summary by strategy', comparison.summary));
+    if (comparison.status === 'partial') group.append(el('strong', `PARTIAL � INCOMPLETE � ${comparison.completed_trials}/${comparison.planned_trials} TRIALS`));
+    if (comparison.summary) group.append(details('Summary by strategy', comparison.summary));
+    if (comparison.failed_attempt) group.append(details('Interrupted attempt and recorded calls', comparison.failed_attempt));
     if (comparison.scenario_summary) group.append(details('Stable vs shifted results', comparison.scenario_summary));
     if (comparison.limitations) group.append(details('Limitations', comparison.limitations));
     for (const trial of comparison.trials || []) {
@@ -141,8 +143,9 @@ async function action(button, path, data, waitText) {
     const result = await api(path, data);
     if (result.generation) selected = result.generation.id;
     if (path === '/api/cells') {
-      lastPartialCellRun = result.status === 'partial' ? result : null;
-      notify(result.status === 'complete' ? 'Both cells finished. Results saved.' : 'A cell failed. Partial results are visible but were not saved.', result.status !== 'complete');
+      notify(result.status === 'complete' ? 'Both cells finished. Results saved.' : 'A cell failed. Partial results were saved as incomplete.', result.status !== 'complete');
+    } else if (path === '/api/comparison' && result.status === 'partial') {
+      notify('Comparison interrupted. Partial evidence was saved as incomplete.', true);
     } else notify(path === '/api/step' ? `Muse chose ${result.decision.action}; the evaluator reported ${result.status}.` : path === '/api/comparison' ? 'Comparison complete. Results are from real calls.' : 'Generation ready.');
   } catch (error) { notify(error.message, true); }
   finally { if (timer) clearInterval(timer); if (path !== '/api/restart') running = false; await refresh().catch(error => notify(error.message, true)); }

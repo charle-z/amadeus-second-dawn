@@ -1,7 +1,7 @@
 import json
 import unittest
 from unittest.mock import patch
-from amadeus.arena import run_comparison, actual_safe_gate, inspection_hint, MuseArenaAgent, MAX_COMPLETION_TOKENS
+from amadeus.arena import run_comparison, actual_safe_gate, inspection_hint, MuseArenaAgent, MAX_COMPLETION_TOKENS, ComparisonInterrupted
 from amadeus.core import safe_gate
 
 
@@ -158,6 +158,46 @@ class ArenaTests(unittest.TestCase):
                 run_comparison(self.memories, [7], self.decide, inspection_mode=mode)
         self.assertEqual(self.calls, [])
 
+    def test_interruption_preserves_completed_trials_and_safe_failed_usage(self):
+        class FailDuringAssessment:
+            last_usage = None
+            def __call__(self, stage, context):
+                if stage == "assess":
+                    self.last_usage = {"completion_tokens": 20}
+                    return {"memory_id": 11, "evidence_id": "inspection-1", "verdict": "uncertain", "rationale": "test"}
+                if context["strategy"] == "VERIFIED_MEMORY":
+                    self.last_usage = {"completion_tokens": 1024, "prompt_tokens": 0,
+                                       "private": "NEVER EXPOSE", "completion_tokens_details": {"reasoning_tokens": 980}}
+                    raise RuntimeError("NEVER EXPOSE private provider error")
+                self.last_usage = {"completion_tokens": 12}
+                return {"action": "left", "rationale": "test"}
+        with self.assertRaises(ComparisonInterrupted) as caught:
+            run_comparison(self.memories, [7], FailDuringAssessment(), inspection_mode="matched")
+        partial = caught.exception.partial_result
+        self.assertEqual(partial["status"], "partial")
+        self.assertEqual(partial["completed_trials"], 2)
+        self.assertEqual(partial["planned_trials"], 6)
+        self.assertEqual(len(partial["trials"]), 2)
+        self.assertEqual(partial["failed_attempt"]["stage"], "act")
+        self.assertEqual(partial["failed_attempt"]["model_calls"][0]["stage"], "assess")
+        self.assertEqual(partial["failed_attempt"]["model_calls"][0]["usage"]["completion_tokens"], 20)
+        self.assertEqual(partial["failed_attempt"]["model_calls"][0]["response"]["verdict"], "uncertain")
+        self.assertEqual(partial["failed_attempt"]["strategy"], "VERIFIED_MEMORY")
+        self.assertEqual(partial["failed_attempt"]["usage"]["completion_tokens"], 1024)
+        self.assertEqual(partial["failed_attempt"]["usage"]["prompt_tokens"], 0)
+        self.assertNotIn("outcome", partial["failed_attempt"])
+        self.assertNotIn("NEVER EXPOSE", json.dumps(partial) + str(caught.exception))
+
+    def test_unknown_usage_is_not_counted_as_zero(self):
+        class Failure:
+            last_usage = None
+            def __call__(self, stage, context):
+                raise RuntimeError("unavailable")
+        with self.assertRaises(ComparisonInterrupted) as caught:
+            run_comparison(self.memories, [7], Failure())
+        self.assertIsNone(caught.exception.partial_result["failed_attempt"]["usage"])
+        self.assertEqual(caught.exception.partial_result["trials"], [])
+
     def test_run_limits(self):
         for seeds in ([], [7, 7], [1, 2, 3], [True]):
             with self.assertRaises(ValueError):
@@ -196,6 +236,25 @@ class ProviderDiagnosticsTests(unittest.TestCase):
         self.assertIn("completion_tokens=512", message)
         self.assertIn("reasoning_tokens=500", message)
         self.assertNotIn("private memory", message)
+
+    def test_provider_usage_survives_incomplete_response_and_is_sanitized(self):
+        body = {"choices": [{"finish_reason": "length", "message": {"content": "private"}}],
+                "usage": {"completion_tokens": 0, "prompt_tokens": 32, "private": "NEVER EXPOSE",
+                          "completion_tokens_details": {"reasoning_tokens": 0, "private": "NEVER EXPOSE"}}}
+        agent = MuseArenaAgent("sensitive-test-key")
+        with patch("amadeus.arena.urlopen", return_value=self.Response(body)):
+            with self.assertRaises(RuntimeError):
+                agent("act", {"can_inspect": True})
+        self.assertEqual(agent.last_usage, {"completion_tokens": 0, "prompt_tokens": 32,
+                                           "completion_tokens_details": {"reasoning_tokens": 0}})
+
+    def test_provider_missing_usage_remains_unknown(self):
+        body = {"choices": [{"finish_reason": "length"}]}
+        agent = MuseArenaAgent("sensitive-test-key")
+        with patch("amadeus.arena.urlopen", return_value=self.Response(body)):
+            with self.assertRaises(RuntimeError):
+                agent("act", {"can_inspect": True})
+        self.assertIsNone(agent.last_usage)
 
     def test_invalid_content_and_untrusted_finish_reason_are_redacted(self):
         msg = self.call({"choices": [{"finish_reason": "stop", "message": {"content": "PRIVATE NON JSON"}}]})

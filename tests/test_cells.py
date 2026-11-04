@@ -50,6 +50,8 @@ class CellTests(unittest.TestCase):
             worker.join(timeout=10)
         self.assertFalse(worker.is_alive())
         self.assertEqual(result[0]['status'], 'complete')
+        self.assertEqual(result[0]['inspection_mode'], 'optional')
+        self.assertTrue(all(t['inspection_mode'] == 'optional' for cell in result[0]['cells'] for t in cell['trials']))
         self.assertEqual({x['strategy'] for x in result[0]['cells']}, {'NAIVE_MEMORY', 'VERIFIED_MEMORY'})
         self.assertEqual({x[1] for x in entries}, {7})
         self.assertTrue(all(x[2] == MEMORIES for x in entries))
@@ -124,6 +126,26 @@ class CellTests(unittest.TestCase):
         with self.assertRaises(BudgetError): limited('act', {})
         self.assertEqual(len(seen), 4)
         self.assertEqual(limited.calls, 4)
+
+    def test_call_budget_keeps_failed_usage_and_clears_stale_usage(self):
+        class Agent:
+            last_usage = None
+            calls = 0
+            def __call__(self, stage, context):
+                self.calls += 1
+                if self.calls == 1:
+                    self.last_usage = {"prompt_tokens": 1, "completion_tokens": 2}
+                    return {}
+                self.last_usage = ({"prompt_tokens": 10, "completion_tokens": 1024}
+                                   if self.calls == 2 else None)
+                raise RuntimeError("incomplete")
+        limited = CallBudget(Agent())
+        limited("act", {})
+        with self.assertRaises(RuntimeError): limited("act", {})
+        self.assertEqual(limited.last_usage, {"prompt_tokens": 10, "completion_tokens": 1024})
+        with self.assertRaises(RuntimeError): limited("act", {})
+        self.assertIsNone(limited.last_usage)
+        self.assertEqual(limited.calls, 3)
 
     def test_no_work_without_valid_training_memory(self):
         c = CellCoordinator()

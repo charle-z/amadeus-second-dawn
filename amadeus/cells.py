@@ -43,9 +43,11 @@ class CallBudget:
         if self.calls >= CALLS_PER_CELL:
             raise BudgetError('Cell call budget exhausted')
         self.calls += 1
-        result = self.decide(stage, context)
-        self.last_usage = copy.deepcopy(getattr(self.decide, 'last_usage', None))
-        return result
+        self.last_usage = None
+        try:
+            return self.decide(stage, context)
+        finally:
+            self.last_usage = copy.deepcopy(getattr(self.decide, 'last_usage', None))
 
 
 def _freeze(memories, seed):
@@ -108,11 +110,12 @@ class CellCoordinator:
         try:
             limited = CallBudget(agent_factory(strategy))
             for scenario in SCENARIOS:
-                trials.append(_trial(seed, scenario, strategy, copy.deepcopy(memories), limited))
+                trials.append(_trial(seed, scenario, strategy, copy.deepcopy(memories), limited, inspection_mode='optional'))
             return {'strategy': strategy, 'status': 'complete', 'calls': limited.calls, 'trials': trials}
         except Exception as exc:
             return {'strategy': strategy, 'status': 'failed', 'calls': limited.calls if limited else 0,
                     'trials': trials, 'error_type': type(exc).__name__,
+                    'failed_usage': copy.deepcopy(limited.last_usage) if limited else None,
                     'error': 'Cell failed; its completed trials, if any, are partial.'}
         finally:
             self._release(lease)
@@ -164,7 +167,7 @@ class CellCoordinator:
             raise
         cells.sort(key=lambda x: STRATEGIES.index(x['strategy']))
         return {'status': 'complete' if all(c['status'] == 'complete' for c in cells) else 'partial',
-                'seed': seed, 'cells': cells,
+                'seed': seed, 'inspection_mode': 'optional', 'cells': cells,
                 'reservation': {'max_concurrent_cells': MAX_SLOTS, 'max_calls': MAX_CALLS,
                                 'max_output_tokens': MAX_OUTPUT, 'per_cell_calls': CALLS_PER_CELL,
                                 'per_call_max_completion_tokens': MAX_COMPLETION_TOKENS},

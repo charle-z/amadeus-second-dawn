@@ -82,6 +82,17 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 502)
         self.assertEqual(self.request('/api/state')['comparisons'], [result])
 
+    def test_interrupted_comparison_persists_partial_evidence(self):
+        from amadeus.arena import ComparisonInterrupted
+        partial = {'status': 'partial', 'inspection_mode': 'matched',
+                   'completed_trials': 1, 'planned_trials': 6,
+                   'trials': [{'strategy': 'NO_MEMORY', 'outcome': 'dead'}],
+                   'failed_attempt': {'stage': 'action', 'usage': None}}
+        with patch('amadeus.arena.MuseArenaAgent', return_value=object()), \
+             patch('amadeus.arena.run_comparison', side_effect=ComparisonInterrupted(partial)):
+            self.assertEqual(self.request('/api/comparison', {'seeds': [7], 'inspection_mode': 'matched'}), partial)
+        self.assertEqual(self.request('/api/state')['comparisons'], [partial])
+
     def test_comparison_accepts_matched_inspection_and_persists_mode(self):
         result = {"inspection_mode": "matched", "trials": [], "summary": []}
         with patch("amadeus.arena.MuseArenaAgent", return_value=object()), \
@@ -93,14 +104,14 @@ class ServerTests(unittest.TestCase):
             self.request("/api/comparison", {"seeds": [7], "inspection_mode": "invalid"})
         self.assertEqual(ctx.exception.code, 400)
 
-    def test_cells_persist_complete_but_return_partial_without_saving(self):
+    def test_cells_persist_complete_and_partial_with_status(self):
         complete = {'status': 'complete', 'seed': 7, 'cells': [], 'reservation': {}}
         partial = {'status': 'partial', 'seed': 7, 'cells': [{'status': 'failed', 'error_type': 'RuntimeError'}]}
         with patch.object(self.server.cells, 'run', side_effect=[complete, partial]):
             self.assertEqual(self.request('/api/cells', {'seed': 7}), complete)
             self.assertEqual(self.request('/api/cells', {'seed': 7}), partial)
         state = self.request('/api/state')
-        self.assertEqual(state['cell_runs'], [complete])
+        self.assertEqual(state['cell_runs'], [partial, complete])
         self.assertEqual(state['cell_capacity']['max_concurrent_cells'], 2)
 
     def test_cells_share_busy_gate_and_validate_input(self):
