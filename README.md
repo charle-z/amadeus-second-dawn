@@ -40,7 +40,7 @@ The first slice is a two-gate world. For a given version and integer seed, the b
 
 Each decision records an observation, action, outcome and deterministic evaluator as evidence, together with generation, world version, seed and timestamp. A restart preserves the memory database, records the parent generation and recreates the same starting environment. If the generation is alive, restarting first marks it `killed`; a completed generation retains its actual outcome.
 
-The comparison runs three policies against paired `stable` and `shifted` scenarios for each seed. `NO_MEMORY` receives no training memories; `NAIVE_MEMORY` receives the prior records without an applicability assessment; `VERIFIED_MEMORY` always inspects, then asks Muse to assess a supplied memory against that evidence before acting; only the memory judged applicable is supplied for its action. An uncertain or inapplicable verdict suppresses the memory and its assessment rationale from the subsequent action context; the full judgment remains in the audit trail. The assessment does not guarantee a correct decision. The other two policies may also inspect once, optionally, for the same cost of one unit. The deterministic inspection hint is imperfect and can mislead. The training set is frozen before trials and does not learn from other policies' trials.
+The comparison runs three policies against paired `stable` and `shifted` scenarios for each seed. `NO_MEMORY` receives no training memories; `NAIVE_MEMORY` receives the prior records without an applicability assessment; `VERIFIED_MEMORY` always inspects, then asks Muse to assess a supplied memory against that evidence before acting; only the memory judged applicable is supplied for its action. An uncertain or inapplicable verdict suppresses the memory and its assessment rationale from the subsequent action context; the full judgment remains in the audit trail. The assessment does not guarantee a correct decision. In the UI, matched inspection is the default: all three policies receive the same fallible signal and pay one inspection unit; VERIFIED still makes an extra model call. The optional mode preserves the earlier unequal-inspection design. World versions are visible to the model, so neither mode isolates verification as the only difference. The deterministic inspection hint is imperfect and can mislead. The training set is frozen before trials and does not learn from other policies' trials.
 
 In the interface, first create a `v1` memory with a real Muse decision, choose its seed in **Compare strategies**, and run the comparison. The interface runs one paired seed at a time; it can take minutes. It saves results to SQLite only after all calls complete. The interface shows each strategy's action, outcome, cost, decision, inspection and evidence.
 
@@ -50,7 +50,13 @@ Alternatively, after the terminal demo has generated a `v1` memory for seed `7` 
 python -c "import json; from amadeus.core import Experiment; from amadeus.arena import run_comparison, MuseArenaAgent; e=Experiment('.runtime/demo.sqlite3'); print(json.dumps(run_comparison(e.memories(), [7], MuseArenaAgent()), indent=2)); e.close()"
 ```
 
-This prints six trials (three policies × two scenarios), their individual model calls and raw summary. It requires one or two distinct seeds, each with a prior `v1` memory; it uses up to the latest four memories per seed. A run makes up to 12 model requests per seed, each capped at 1024 completion tokens; these limits do not enforce a monetary budget. The function returns results only after all requests succeed; it does not itself persist the comparison. The real example below does not establish a winner.
+The CLI call above uses optional inspection by default; pass `inspection_mode="matched"` to `run_comparison` for equal inspection. This prints six trials (three policies × two scenarios), their individual model calls and raw summary. It requires one or two distinct seeds, each with a prior `v1` memory; it uses up to the latest four memories per seed. A run makes up to 12 model requests per seed, each capped at 1024 completion tokens; these limits do not enforce a monetary budget. The function returns results only after all requests succeed; it does not itself persist the comparison. The real example below does not establish a winner.
+
+## Exact resource-planning preview
+
+The **Resource Planner** chooses an exact maximum-value subset of up to 16 candidates with declared CPU millicores, RAM MiB, additive reserved seconds, cost units and cell slots. Three illustrative candidates are provided in the interface and the budgets are editable. The sample starts with A worth 12, and B and C worth 9 each: the optimal pair B+C scores 18 under the default budget. The values are declared examples, not measured outcomes.
+
+This is a planning preview; it does **not** launch cells or atomically reserve current capacity. The existing two-cell coordinator remains the live admission mechanism. Reservations are not physical quotas or a spending cap. The formulation, proof and experimental caveats are in [mathematics.md](docs/mathematics.md). `POST /api/planner` accepts up to 16 caller-supplied candidates; it makes no model calls.
 
 ## Two experimental cells
 
@@ -60,7 +66,7 @@ These are logical, process-local reservations, not CPU or RAM quotas, provider-e
 
 ## One historical comparison, not a benchmark
 
-A real run with seed `7` used one frozen `v1` memory, six paired trials and ten Muse calls. This historical run predates the fix that strips the assessment rationale from the action context when a memory is not accepted. Each policy was tested once with the rule stable and once with it shifted. The cost is the number of inspections, not money or tokens.
+A real run with seed `7` used one frozen `v1` memory, six paired trials and ten Muse calls. This historical run predates the fix that strips the assessment rationale from the action context when a memory is not accepted. **All prior comparison and cell-run evidence used an inconsistent world-version label**: stable trials were labeled v2 although their gate rule was v1. The original traces are preserved unchanged; new trials use v1 for stable and v2 for shifted. Each policy was tested once with the rule stable and once with it shifted. The cost is the number of inspections, not money or tokens.
 
 | Policy | Stable | Shifted | Wins | Inspection cost | Model calls |
 | --- | --- | --- | ---: | ---: | ---: |
@@ -68,13 +74,15 @@ A real run with seed `7` used one frozen `v1` memory, six paired trials and ten 
 | NAIVE_MEMORY | won | dead | 1/2 | 2 | 4 |
 | VERIFIED_MEMORY | dead | dead | 0/2 | 2 | 4 |
 
-In this run both inspection signals seen by `VERIFIED_MEMORY` were wrong and both applicability judgments were `uncertain`. The example does **not** show that verification is superior or inferior in general: it contains only one seed and one trial per policy and scenario. The [raw comparison evidence](docs/evidence/comparison-seed-7.json) includes the frozen training memory and all six recorded trials. A [second real run from the UI](docs/evidence/ui-comparison-seed-7.json) used two training memories and returned a different set of decisions. A [later real UI run after that fix](docs/evidence/ui-post-fix-seed-7.json) had 0/2 wins for each policy, with inspection costs of 1, 2 and 2 respectively, across 11 Muse calls. It too is one seed and not evidence of a general ranking. A fresh live run may produce different model decisions. Both stable and shifted scenarios are included, and the model's optional or mandatory inspections impose different costs across policies.
+In this run both inspection signals seen by `VERIFIED_MEMORY` were wrong and both applicability judgments were `uncertain`. The example does **not** show that verification is superior or inferior in general: it contains only one seed and one trial per policy and scenario. The [raw comparison evidence](docs/evidence/comparison-seed-7.json) includes the frozen training memory and all six recorded trials. A [second real run from the UI](docs/evidence/ui-comparison-seed-7.json) used two training memories and returned a different set of decisions. A [later real UI run after that fix](docs/evidence/ui-post-fix-seed-7.json) had 0/2 wins for each policy, with inspection costs of 1, 2 and 2 respectively, across 11 Muse calls. It too is one seed and not evidence of a general ranking; it also predates the world-version label correction. A fresh live run may produce different model decisions. Both stable and shifted scenarios are included, and the model's optional or mandatory inspections impose different costs across policies.
+
+A [single later real trial](docs/evidence/matched-single-trial.json) exercised VERIFIED under matched inspection and the corrected stable v1 label: Muse returned `uncertain`, chose left, and the evaluator recorded death. It made two model calls; it is not a three-policy comparison.
 
 ## Limits
 
 - The world is intentionally simple and deterministic. A few runs cannot establish general learning, transfer or statistical significance.
 - Memory is recorded external evidence, not a modification of model weights. A successful verification procedure can still be wrong and has a cost.
-- Identical seeds align world conditions; model outputs may vary. Clean databases, matched trials, reporting of failures and enough repetitions are needed for meaningful comparisons.
+- Identical seeds align world conditions and the deterministic inspection signal; model outputs may vary. Repeating a seed does not resample environmental noise. Clean databases, matched trials, reporting of failures and enough repetitions are needed for meaningful comparisons.
 - Automated tests exercise deterministic behavior and use mocks for API-dependent behavior. They do not prove a live Meta call works in another environment.
 - API keys and generated databases stay local. The included server adapter holds the key on the backend; use a trusted local machine.
 
@@ -86,3 +94,5 @@ In this run both inspection signals seen by `VERIFIED_MEMORY` were wrong and bot
 ## License
 
 Project code is available under the [MIT License](LICENSE). Generated GitHub Spec Kit components retain their [upstream MIT notice](third_party/spec-kit/LICENSE).
+
+Optional UI renderer checks, when Node.js is installed: `node --test tests/test_world.js`. Python tests use only the standard library.

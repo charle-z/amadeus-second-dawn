@@ -12,6 +12,7 @@ from .cells import CellCoordinator, MAX_SLOTS, MAX_CALLS, MAX_OUTPUT, CALLS_PER_
 WEB = Path(__file__).resolve().parent.parent / 'web'
 STATIC = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'application/javascript; charset=utf-8'),
+          '/world.js': ('world.js', 'application/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
 
 
@@ -115,6 +116,11 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
 
     def dispatch(self, data):
+        if self.path == '/api/planner':
+            if set(data) != {'candidates', 'budgets'}:
+                raise ValueError('Expected candidates and budgets')
+            from .planner import select_exact
+            return select_exact(data['candidates'], data['budgets'])
         exp = Experiment(self.server.db_path)
         try:
             if self.path == '/api/start' and set(data) == {'version', 'seed'}:
@@ -131,7 +137,10 @@ class Handler(BaseHTTPRequestHandler):
                     return exp.step(generation_id, MuseAgent())
                 finally:
                     self.server.busy.release()
-            if self.path == '/api/comparison' and set(data) == {'seeds'}:
+            if self.path == '/api/comparison' and set(data) in ({'seeds'}, {'seeds', 'inspection_mode'}):
+                mode = data.get('inspection_mode', 'optional')
+                if mode not in ('optional', 'matched'):
+                    raise ValueError('Invalid inspection mode')
                 seeds = data['seeds']
                 if not isinstance(seeds, list) or not 1 <= len(seeds) <= 2:
                     raise ValueError('Choose one or two seeds')
@@ -142,7 +151,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError('Another model run is in progress')
                 try:
                     from .arena import run_comparison, MuseArenaAgent
-                    result = run_comparison(exp.memories(), seeds, MuseArenaAgent())
+                    result = run_comparison(exp.memories(), seeds, MuseArenaAgent(), inspection_mode=mode)
                     with exp.db:
                         exp.db.execute('INSERT INTO ui_comparisons(result) VALUES (?)', (json.dumps(result),))
                     return result

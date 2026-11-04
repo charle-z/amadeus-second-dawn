@@ -5,3 +5,8 @@
 - [x] Matched, evidence-backed comparison across changing and stable rules.
 - [x] Visual interface and reproducible real-model walkthrough.
 - [ ] Record and submit the three-minute demo; verify final documentation, tests and publication.
+
+- [x] Independent mathematical review and bounded exact resource-planning preview.
+- [x] Correct world-version mismatch and add matched-inspection comparison.
+- [x] Verify one new matched trial with two real Muse calls; no three-policy result claimed.
+- [ ] Publish these new changes and finish the official submission.

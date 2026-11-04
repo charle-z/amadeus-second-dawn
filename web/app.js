@@ -36,6 +36,7 @@ async function refresh() {
 }
 function render() {
   const gen = current.generations.find(g => g.id === selected);
+  window.renderWorld(gen);
   $('selected-title').textContent = gen ? `Generation #${gen.id} · ${gen.world_version.toUpperCase()} / seed ${gen.seed}` : 'No generation selected';
   $('selected-status').textContent = gen ? gen.status.toUpperCase() : '—';
   $('selected-status').className = `badge outcome-${gen?.status || 'none'}`;
@@ -101,6 +102,7 @@ function renderCells() {
   for (const run of runs) {
     const group = el('div', null, 'trial');
     group.append(el('strong', `SEED ${run.seed} · ${run.status.toUpperCase()}${run.status === 'partial' ? ' — NOT SAVED' : ''}`));
+    if ((run.cells || []).some(cell => (cell.trials || []).some(trial => !trial.inspection_mode))) group.append(el('div', 'HISTORICAL: earlier world version labels were inconsistent', 'gen-meta'));
     for (const cell of run.cells || []) {
       group.append(el('div', `${cell.strategy} · ${cell.status.toUpperCase()} · ${cell.calls} calls${cell.error_type ? ` · ${cell.error_type}` : ''}`, 'sub'));
       for (const trial of cell.trials || []) {
@@ -118,6 +120,7 @@ function renderComparisons() {
   if (!current.comparisons.length) { container.textContent = 'No comparisons run yet.'; container.classList.add('empty'); return; }
   for (const comparison of current.comparisons) {
     const group = el('div');
+    group.append(el('div', comparison.inspection_mode ? `INSPECTION: ${comparison.inspection_mode.toUpperCase()}` : 'HISTORICAL: earlier world version labels were inconsistent', 'gen-meta'));
     group.append(details('Summary by strategy', comparison.summary));
     if (comparison.scenario_summary) group.append(details('Stable vs shifted results', comparison.scenario_summary));
     if (comparison.limitations) group.append(details('Limitations', comparison.limitations));
@@ -151,6 +154,32 @@ $('start').onclick = () => {
 };
 $('step').onclick = () => action($('step'), '/api/step', {generation_id: selected}, 'Waiting for a real Muse decision…');
 $('restart').onclick = () => action($('restart'), '/api/restart', {generation_id: selected}, 'Ending generation and restarting…');
-$('compare').onclick = () => action($('compare'), '/api/comparison', {seeds: [Number($('compare-seed').value)]}, 'Running comparison with real Muse calls. This may take minutes…');
+$('compare').onclick = () => action($('compare'), '/api/comparison', {seeds: [Number($('compare-seed').value)], inspection_mode: $('inspection-mode').value}, 'Running comparison with real Muse calls. This may take minutes…');
 $('cells').onclick = () => action($('cells'), '/api/cells', {seed: Number($('compare-seed').value)}, 'Running two cells concurrently with real Muse calls. This may take minutes…');
+const planItems = [
+  {id:'A', value:12, cpu_millis:600, memory_mib:600, time_seconds:1, cost_units:1},
+  {id:'B', value:9, cpu_millis:500, memory_mib:500, time_seconds:1, cost_units:1},
+  {id:'C', value:9, cpu_millis:500, memory_mib:500, time_seconds:1, cost_units:1}
+];
+$('plan').onclick = async () => {
+  const ids = {cpu_millis:'budget-cpu', memory_mib:'budget-memory', time_seconds:'budget-time', cost_units:'budget-cost', cells:'budget-cells'};
+  const budgets = {};
+  for (const [key, id] of Object.entries(ids)) {
+    const text = $(id).value;
+    const value = Number(text);
+    if (!/^\d+$/.test(text) || !Number.isSafeInteger(value) || value > 1000000000000) {
+      $('plan-result').textContent = 'Enter non-negative whole-number budgets up to 1,000,000,000,000.'; return;
+    }
+    budgets[key] = value;
+  }
+  $('plan').disabled = true;
+  try {
+    const result = await api('/api/planner', {candidates: planItems, budgets});
+    const box = $('plan-result'); clear(box); box.classList.add('planner-result');
+    box.append(el('strong', `SELECTED: ${result.selected.join(' + ') || 'none'} · DECLARED VALUE ${result.total_value}`));
+    box.append(el('div', `Reserved: ${result.reserved.cpu_millis} millicores · ${result.reserved.memory_mib} MiB · ${result.reserved.time_seconds} s · ${result.reserved.cost_units} units · ${result.reserved.cells} cells`, 'sub'));
+    box.append(el('div', `${result.feasible_subsets} feasible subsets evaluated. Preview only; nothing was launched.`, 'hint'));
+  } catch (error) { $('plan-result').textContent = error.message; }
+  finally { $('plan').disabled = false; }
+};
 refresh().catch(error => notify(error.message, true));
