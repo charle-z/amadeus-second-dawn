@@ -7,7 +7,7 @@ const source = fs.readFileSync('web/app.js', 'utf8');
 const start = source.indexOf('function workPaths(');
 const end = source.indexOf('\nfunction renderWork(', start);
 assert.ok(start >= 0 && end > start, 'work state helpers exist');
-const helpers = vm.runInNewContext(source.slice(start, end) + '\n({workPaths, workState, workDiagnosticText, confirmWorkDelete, workHistory, workReviewStatus})');
+const helpers = vm.runInNewContext(source.slice(start, end) + '\n({workPaths, workState, workDiagnosticText, confirmWorkDelete, workHistory, workReviewStatus, workCheckpointStatus})');
 
 test('paths are explicit, one per line, and blank lines are ignored', () => {
   assert.deepEqual(Array.from(helpers.workPaths(' README.md\n\ndocs/plan.md \n')), ['README.md', 'docs/plan.md']);
@@ -57,6 +57,12 @@ test('review freshness describes observed file hashes without claiming correctne
   assert.doesNotMatch(helpers.workReviewStatus({review_status: 'unchanged'}), /valid|correct/i);
 });
 
+test('checkpoint freshness distinguishes changed notes from changed files', () => {
+  assert.match(helpers.workCheckpointStatus({checkpoint_status: 'changed'}), /notes changed/i);
+  assert.match(helpers.workCheckpointStatus({checkpoint_status: 'unchanged'}), /notes were unchanged/i);
+  assert.equal(helpers.workCheckpointStatus({checkpoint_status: 'no_review'}), '');
+});
+
 test('a failed model review preserves the last local check', async () => {
   const startAction = source.indexOf('async function workAction(');
   const endAction = source.indexOf("\n$('work-select').onchange", startAction);
@@ -83,7 +89,7 @@ test('rendered history keeps the latest visible and folds real earlier evidence 
   const old = {changes: [{path: 'a.py', status: 'changed', diff: '<img src=x>'}], diagnostics: [{path: 'a.py', check: 'python-syntax', status: 'pass'}], analysis: {summary: 'old finding', findings: [{path: 'a.py', quote: '<script>literal</script>', assessment: 'historical'}], next_step: 'review'}};
   const state = {work_available: true, work_tasks: [{id: 2, goal: 'goal', paths: ['a.py'], last_result: newest, review_history: [{recorded_at: '2026-11-05T01:03:13Z', result: newest}, {recorded_at: null, result: old}]}]};
   const section = source.slice(start, source.indexOf('\nasync function workAction(', end));
-  const context = {current: state, workSelected: 2, workInspection: null, running: false, $: get, el: make, details};
+  const context = {current: state, workSelected: 2, workInspection: null, checkpointLoadedKey: null, running: false, $: get, el: make, details};
   vm.runInNewContext(section + '\nrenderWork()', context);
   const walk = node => [node, ...node.children.flatMap(walk)];
   const nodes = walk(ids['work-result']);
@@ -103,4 +109,8 @@ test('rendered history keeps the latest visible and folds real earlier evidence 
   context.workInspection.review_id = 12;
   vm.runInNewContext(section + '\nrenderWork()', context);
   assert.ok(walk(ids['work-result']).some(n => n.tag === 'p' && /latest review changed after this file check/i.test(n.textContent)));
+  context.workInspection.review_id = null;
+  state.work_tasks[0].checkpoint = {revision: 2, next_step: 'Continue'};
+  vm.runInNewContext(section + '\nrenderWork()', context);
+  assert.ok(walk(ids['work-result']).some(n => n.tag === 'p' && /notes changed after this file check/i.test(n.textContent)));
 });

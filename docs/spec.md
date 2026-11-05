@@ -27,3 +27,5 @@ A user can preserve an explicit work objective and selected text files from a co
 On each review, run Python and JSON syntax checks without executing selected files, preserve the previous model analysis as fallible context, and validate that cited quotations appear in the files read. Syntax checks and quotation matching do not prove a recommendation correct.
 
 Allow a local-only check of selected files and syntax without an API key or model call. Compare the current file hashes with those used for the latest recorded review, and report the time and limitations of the check without implying that an unchanged review is correct.
+
+Allow optional progress notes on completed work, attempts and next steps to persist with the objective. Include saved notes in explicit model reviews, reject a review if the notes change during analysis, and report note changes alongside file changes in local checks.

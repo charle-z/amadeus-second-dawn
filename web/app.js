@@ -4,6 +4,7 @@ const R = window.AmadeusResults;
 let selected = null;
 let workSelected = null;
 let workInspection = null;
+let checkpointLoadedKey = null;
 let current = {generations: [], memories: [], comparisons: [], cell_runs: []};
 let running = false;
 
@@ -136,7 +137,7 @@ function workDiagnosticText(item) {
   return text;
 }
 function confirmWorkDelete(confirmDialog) {
-  return confirmDialog('Delete this saved objective, its snapshots and its local analysis? This cannot erase backups, filesystem copies, public evidence, or data already sent to Meta.');
+  return confirmDialog('Delete this saved objective, its snapshots, progress notes and its local analysis? This cannot erase backups, filesystem copies, public evidence, or data already sent to Meta.');
 }
 function workHistory(task) {
   const history = Array.isArray(task.review_history) ? task.review_history : [];
@@ -151,6 +152,11 @@ function workReviewStatus(inspection) {
   if (inspection.review_status === 'unchanged') return 'Files were unchanged since the latest review.';
   return 'Files changed since the latest review; reconsider its recommendations.';
 }
+function workCheckpointStatus(inspection) {
+  if (inspection?.checkpoint_status === 'changed') return 'Progress notes changed since the latest review; reconsider its recommendations.';
+  if (inspection?.checkpoint_status === 'unchanged') return 'Progress notes were unchanged since the latest review.';
+  return '';
+}
 function renderWork() {
   const view = workState(current, workSelected);
   const task = view.task;
@@ -160,6 +166,8 @@ function renderWork() {
     : 'Workspace unavailable. Set AMADEUS_WORKSPACE on the server and restart it to use this feature.';
   $('work-start').disabled = running || !view.available;
   $('work-inspect').disabled = running || !view.available || !task;
+  $('checkpoint-save').disabled = running || !view.available || !task;
+  for (const id of ['checkpoint-completed', 'checkpoint-attempted', 'checkpoint-next']) $(id).disabled = running || !view.available || !task;
   $('work-resume').disabled = running || !view.available || !task;
   $('work-delete').disabled = running || !view.available || !task;
   $('work-select').disabled = running || !view.tasks.length;
@@ -170,6 +178,13 @@ function renderWork() {
     option.value = String(item.id); option.selected = item.id === workSelected; selector.append(option);
   }
   const box = $('work-result'); box.replaceChildren();
+  const checkpointKey = `${task?.id ?? ''}:${task?.checkpoint?.revision ?? 0}`;
+  if (checkpointLoadedKey !== checkpointKey) {
+    $('checkpoint-completed').value = task?.checkpoint?.completed || '';
+    $('checkpoint-attempted').value = task?.checkpoint?.attempted || '';
+    $('checkpoint-next').value = task?.checkpoint?.next_step || '';
+    checkpointLoadedKey = checkpointKey;
+  }
   if (!task) { box.textContent = 'No saved objectives yet.'; return; }
   box.append(el('strong', `Objective #${task.id}`), el('p', task.goal));
   box.append(el('div', `Monitoring: ${(task.paths || []).join(', ')}`, 'gen-meta'));
@@ -179,6 +194,10 @@ function renderWork() {
   const statusText = reviewChanged ? 'The latest review changed after this file check; check again.'
     : !inspection && !task.last_result ? 'No Muse review exists for this objective.' : workReviewStatus(inspection);
   box.append(el('p', statusText, 'hint'));
+  const notesChangedAfterCheck = inspection && (inspection.checkpoint_revision ?? 0) !== (task.checkpoint?.revision ?? 0);
+  const noteStatus = notesChangedAfterCheck ? 'Progress notes changed after this file check; check again.'
+    : !reviewChanged && inspection ? workCheckpointStatus(inspection) : '';
+  if (noteStatus) box.append(el('p', noteStatus, 'hint'));
   if (inspection) {
     box.append(el('h3', 'Local file check'), el('p', `Checked at ${inspection.inspected_at}. Files can change afterwards.`, 'gen-meta'));
     appendWorkFiles(box, inspection);
@@ -250,7 +269,7 @@ async function workAction(button, path, payload, waiting) {
     if (path === '/api/work/delete') workSelected = null;
     if (path === '/api/work/resume') workInspection = null;
     if (path === '/api/work/inspect') workInspection = result;
-    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : path === '/api/work/delete' ? 'Local objective and snapshots deleted.' : path === '/api/work/inspect' ? 'Local check completed. No model call was made.' : 'Muse analysis saved. Check the evidence before acting.');
+    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : path === '/api/work/delete' ? 'Local objective and snapshots deleted.' : path === '/api/work/checkpoint' ? 'Progress notes saved locally. No model call was made.' : path === '/api/work/inspect' ? 'Local check completed. No model call was made.' : 'Muse analysis saved. Check the evidence before acting.');
   } catch (error) { notify(error.message, true); }
   finally { running = false; await refresh().catch(error => notify(error.message, true)); }
 }
@@ -263,6 +282,8 @@ $('work-start').onclick = () => {
 };
 $('work-resume').onclick = () => workAction($('work-resume'), '/api/work/resume', {task_id: workSelected}, 'Comparing files and waiting for a real Muse analysis…');
 $('work-inspect').onclick = () => workAction($('work-inspect'), '/api/work/inspect', {task_id: workSelected}, 'Checking selected files locally…');
+$('checkpoint-save').onclick = () => workAction($('checkpoint-save'), '/api/work/checkpoint', {task_id: workSelected,
+  completed: $('checkpoint-completed').value, attempted: $('checkpoint-attempted').value, next_step: $('checkpoint-next').value}, 'Saving progress notes locally…');
 $('work-delete').onclick = () => {
   if (running || !workSelected || !confirmWorkDelete(message => window.confirm(message))) return;
   workAction($('work-delete'), '/api/work/delete', {task_id: workSelected}, 'Deleting the selected local objective…');

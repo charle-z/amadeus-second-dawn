@@ -73,4 +73,16 @@ class WorkHTTPTests(unittest.TestCase):
                          {'Content-Type': 'application/json', 'Origin': 'https://evil.example'})
         self.assertEqual(error.exception.code, 403)
 
+    def test_checkpoint_is_persisted_locally_and_rejects_cross_origin(self):
+        task = self.request('/api/work/start', {'goal': 'continue', 'paths': ['notes.md']})['task']
+        payload = {'task_id': task['id'], 'completed': 'Reviewed spec', 'attempted': '', 'next_step': 'Check tests'}
+        with patch('amadeus.work.MuseWorkAgent', side_effect=AssertionError('model must not be used')):
+            saved = self.request('/api/work/checkpoint', payload)
+        self.assertEqual(saved['checkpoint']['next_step'], 'Check tests')
+        self.assertEqual(self.request('/api/state')['work_tasks'][0]['checkpoint']['completed'], 'Reviewed spec')
+        with self.assertRaises(HTTPError) as error:
+            self.request('/api/work/checkpoint', payload,
+                         {'Content-Type': 'application/json', 'Origin': 'https://evil.example'})
+        self.assertEqual(error.exception.code, 403)
+
 if __name__ == '__main__': unittest.main()
