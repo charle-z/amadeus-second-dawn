@@ -10,7 +10,7 @@ A real Meta Model API vertical slice has run: in world `v1`, seed `7`, Muse chos
 
 The comparison engine implements three memory policies and a local visual interface. One real paired comparison has also completed; its small-sample results are below. Do not interpret automated test fixtures, mocked model responses, or the example above as comparison results. The code reports API errors rather than silently substituting simulated decisions.
 
-A [three-minute evidence replay](demo/amadeus-evidence-replay-en.mp4) presents recorded results with synthetic narration. It is a visualization, not a live call or a recording of the interface.
+A [two-and-a-half-minute continuity evidence replay](demo/amadeus-continuity-evidence.mp4) presents the recorded project review, recovery after restart and the memory experiment with synthetic narration. It reconstructs evidence and is not a live screen recording or a live API call. The [earlier experiment replay](demo/amadeus-evidence-replay-en.mp4) remains available.
 
 ## Requirements and setup
 
