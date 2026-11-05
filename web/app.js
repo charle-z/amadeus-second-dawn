@@ -137,6 +137,13 @@ function workDiagnosticText(item) {
 function confirmWorkDelete(confirmDialog) {
   return confirmDialog('Delete this saved objective, its snapshots and its local analysis? This cannot erase backups, filesystem copies, public evidence, or data already sent to Meta.');
 }
+function workHistory(task) {
+  const history = Array.isArray(task.review_history) ? task.review_history : [];
+  return history.filter(item => item && item.result).map(item => ({
+    label: typeof item.recorded_at === 'string' && item.recorded_at ? item.recorded_at : 'legacy date unknown',
+    result: item.result,
+  }));
+}
 function renderWork() {
   const view = workState(current, workSelected);
   const task = view.task;
@@ -160,6 +167,22 @@ function renderWork() {
   box.append(el('div', `Monitoring: ${(task.paths || []).join(', ')}`, 'gen-meta'));
   const result = task.last_result;
   if (!result) { box.append(el('p', 'Snapshot saved. No Muse analysis has been run yet.', 'hint')); return; }
+  const history = workHistory(task);
+  if (history.length) box.append(el('p', `Latest review: ${history[0].label}`, 'gen-meta'));
+  appendWorkReview(box, result);
+  const older = history.slice(1);
+  if (older.length) {
+    box.append(el('h3', 'Earlier reviews'));
+    for (const entry of older) {
+      const panel = el('details', null, 'raw');
+      panel.append(el('summary', `Review · ${entry.label}`));
+      appendWorkReview(panel, entry.result);
+      box.append(panel);
+    }
+    box.append(el('p', 'Up to five recent reviews are shown.', 'hint'));
+  }
+}
+function appendWorkReview(box, result) {
   if (result.previous_analysis) {
     box.append(el('h3', 'Earlier analysis, reconsidered'),
       el('p', result.previous_analysis.summary),

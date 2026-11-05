@@ -37,8 +37,17 @@ class WorkManager:
                     self.root = candidate
             except (OSError, RuntimeError):
                 pass
-        self.db.execute('CREATE TABLE IF NOT EXISTS work_tasks (id INTEGER PRIMARY KEY, goal TEXT NOT NULL, paths TEXT NOT NULL, snapshots TEXT NOT NULL, root_hash TEXT NOT NULL, created_at TEXT NOT NULL, last_result TEXT)')
-        self.db.commit()
+        self.db.execute('PRAGMA foreign_keys=ON')
+        if self.db.execute('PRAGMA foreign_keys').fetchone()[0] != 1:
+            raise RuntimeError('SQLite foreign key enforcement is required')
+        with self.db:
+            self.db.execute('CREATE TABLE IF NOT EXISTS work_tasks (id INTEGER PRIMARY KEY, goal TEXT NOT NULL, paths TEXT NOT NULL, snapshots TEXT NOT NULL, root_hash TEXT NOT NULL, created_at TEXT NOT NULL, last_result TEXT)')
+            self.db.execute("CREATE TABLE IF NOT EXISTS work_reviews (id INTEGER PRIMARY KEY, task_id INTEGER NOT NULL REFERENCES work_tasks(id) ON DELETE CASCADE, recorded_at TEXT, origin TEXT NOT NULL CHECK(origin IN ('legacy', 'recorded')), result TEXT NOT NULL)")
+            self.db.execute('CREATE INDEX IF NOT EXISTS work_reviews_task_id ON work_reviews(task_id, id DESC)')
+            self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS work_reviews_one_legacy ON work_reviews(task_id) WHERE origin='legacy'")
+            # Legacy databases retained only last_result. Backfill without inventing a timestamp.
+            # The insert and index make this idempotent across reopens/concurrent initializers.
+            self.db.execute("INSERT OR IGNORE INTO work_reviews(task_id, recorded_at, origin, result) SELECT id, NULL, 'legacy', last_result FROM work_tasks WHERE last_result IS NOT NULL AND NOT EXISTS (SELECT 1 FROM work_reviews WHERE task_id=work_tasks.id)")
 
     def _root_hash(self):
         if self.root is None:
@@ -110,8 +119,14 @@ class WorkManager:
         if not self.root:
             return []
         rows = self.db.execute('SELECT id, goal, paths, created_at, last_result FROM work_tasks WHERE root_hash=? ORDER BY id DESC LIMIT 30', (self._root_hash(),)).fetchall()
-        return [{'id': row['id'], 'goal': row['goal'], 'paths': json.loads(row['paths']), 'created_at': row['created_at'],
-                 'last_result': json.loads(row['last_result']) if row['last_result'] else None} for row in rows]
+        tasks = []
+        for row in rows:
+            reviews = self.db.execute('SELECT id, recorded_at, origin, result FROM work_reviews WHERE task_id=? ORDER BY id DESC LIMIT 5', (row['id'],)).fetchall()
+            tasks.append({'id': row['id'], 'goal': row['goal'], 'paths': json.loads(row['paths']), 'created_at': row['created_at'],
+                          'last_result': json.loads(row['last_result']) if row['last_result'] else None,
+                          'review_history': [{'id': review['id'], 'recorded_at': review['recorded_at'], 'origin': review['origin'],
+                                              'result': json.loads(review['result'])} for review in reviews]})
+        return tasks
 
     def delete(self, task_id):
         """Delete one task in the configured workspace, not external copies."""
@@ -177,8 +192,13 @@ class WorkManager:
         usage = _sanitize_usage(getattr(decide, 'last_usage', None))
         if usage is not None:
             result['usage'] = usage
+        serialized = json.dumps(result)
         with self.db:
-            self.db.execute('UPDATE work_tasks SET last_result=? WHERE id=? AND root_hash=?', (json.dumps(result), task_id, self._root_hash()))
+            changed = self.db.execute('UPDATE work_tasks SET last_result=? WHERE id=? AND root_hash=?', (serialized, task_id, self._root_hash()))
+            if changed.rowcount != 1:
+                raise ValueError('Task changed while model was working')
+            self.db.execute('INSERT INTO work_reviews(task_id, recorded_at, origin, result) VALUES (?, ?, ?, ?)',
+                            (task_id, now(), 'recorded', serialized))
         return result
 
 

@@ -34,3 +34,5 @@ A separate read-only workflow stores a user objective and snapshots of explicitl
 One real practical review used two public project files and detected a real specification change; Muse returned three literally verified citations and a next step. One request reported 1,513 input / 449 completion tokens. Its proposed test may already be covered elsewhere; the model saw only selected files. Evidence: docs/evidence/work-continuity-real.json.
 
 A user-confirmed deletion removes one selected local work objective, its snapshots and analysis from the configured workspace database; it does not erase backups, published evidence or information already sent to Meta.
+
+Completed work reviews are stored as separate records; the interface shows up to five. The previous last-result-only format is migrated without inventing a timestamp. Deleting a work objective removes its associated review records locally.
