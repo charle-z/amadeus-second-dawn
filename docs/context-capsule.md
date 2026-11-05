@@ -20,3 +20,8 @@ Verify and publish the current revision, record or use the labeled replay, and c
 ## Pro review and interruption evidence — 2026-11-04
 
 ChatGPT interface reasoning level Pro 5/5 reviewed public commit `4ab0602e999ae73249fbc244a852785f79cd3028`. See [pro-review.md](pro-review.md) for its scope and limits. Subsequent code preserves handled partial comparisons and cell runs as incomplete; an abrupt process termination can still lose in-flight evidence. No new Muse calls were made for the review or regression tests.
+
+
+## Second Life — 2026-11-04
+
+A v1 generation with a recorded outcome can create a v2 child with the same seed. An explicitly requested verified step uses only the parent memory, a fallible inspection and at most two model calls. The backend independently determines the outcome, persists provenance, and records handled interruptions without inventing outcomes. Automated tests use test doubles; no new live Muse trace was generated for this feature. The existing video predates it and is labeled a historical evidence replay.

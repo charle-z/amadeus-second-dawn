@@ -124,3 +124,59 @@ class Experiment:
                     raise ValueError("Generation changed while restarting")
                 self._event(generation_id, "killed", {"reason": "manual restart"})
             return self._start(generation["world_version"], generation["seed"], generation_id)
+
+    def continue_changed(self, generation_id):
+        """Create a linked v2 generation after a recorded v1 outcome."""
+        with self.db:
+            generation = self.get_generation(generation_id)
+            if generation['world_version'] != 'v1' or generation['status'] not in ('won', 'dead'):
+                raise ValueError('A completed v1 generation is required')
+            if not self.db.execute('SELECT 1 FROM memories WHERE generation_id=?', (generation_id,)).fetchone():
+                raise ValueError('A recorded memory is required')
+            return self._start('v2', generation['seed'], generation_id)
+
+    def verified_step(self, generation_id, decide):
+        """Ask the model to assess the parent's evidence and act in v2."""
+        from .arena import _trial, _TrackedDecision
+        generation = self.get_generation(generation_id)
+        if generation['status'] != 'alive' or generation['world_version'] != 'v2' or generation['parent_id'] is None:
+            raise ValueError('An alive changed-world generation is required')
+        parent = self.get_generation(generation['parent_id'])
+        if parent['world_version'] != 'v1' or parent['seed'] != generation['seed'] or parent['status'] not in ('won', 'dead'):
+            raise ValueError('A completed v1 parent with the same seed is required')
+        memories = [m for m in self.memories() if m['generation_id'] == parent['id']]
+        if not memories:
+            raise ValueError('The parent has no recorded memory')
+        tracked = _TrackedDecision(decide)
+        try:
+            trial = _trial(generation['seed'], 'shifted', 'VERIFIED_MEMORY', memories, tracked, inspection_mode='matched')
+        except Exception as exc:
+            error_type = type(exc).__name__ if type(exc).__name__ in ('RuntimeError', 'ValueError', 'TimeoutError', 'OSError') else 'ModelError'
+            with self.db:
+                self._event(generation_id, 'verified_interrupted', {'stage': tracked.stage,
+                            'model_calls': tracked.calls, 'usage': tracked.last_usage, 'error_type': error_type})
+            if isinstance(exc, ValueError):
+                raise ValueError('Model decision was invalid; partial evidence was recorded') from None
+            raise RuntimeError('Muse request failed; partial evidence was recorded') from None
+        decision = validate_decision({'action': trial['action'], 'rationale': trial['rationale']})
+        outcome = 'won' if decision['action'] == safe_gate(generation['world_version'], generation['seed']) else 'dead'
+        evidence = {'observation': generation['observation'], 'action': decision['action'],
+                    'result': outcome, 'evaluator': 'deterministic gate rule',
+                    'source_memory_ids': [m['id'] for m in memories],
+                    'assessment': trial['assessment'], 'inspection': trial['inspection']}
+        with self.db:
+            changed = self.db.execute("UPDATE generations SET status=? WHERE id=? AND status='alive'", (outcome, generation_id))
+            if changed.rowcount != 1:
+                self._event(generation_id, 'verified_interrupted', {'stage': 'commit',
+                            'model_calls': tracked.calls, 'usage': None, 'error_type': 'GenerationChanged'})
+            else:
+                self._event(generation_id, 'verified_trial', trial)
+                self._event(generation_id, 'decision', decision)
+                self._event(generation_id, outcome, evidence)
+                row = self.db.execute('INSERT INTO memories(generation_id,world_version,seed,action,outcome,evidence,created_at) VALUES (?,?,?,?,?,?,?)',
+                                      (generation_id, generation['world_version'], generation['seed'], decision['action'], outcome, json.dumps(evidence), now()))
+                memory = dict(self.db.execute('SELECT * FROM memories WHERE id=?', (row.lastrowid,)).fetchone())
+                memory['evidence'] = json.loads(memory['evidence'])
+        if changed.rowcount != 1:
+            raise ValueError('Generation changed while model was deciding; partial evidence was recorded')
+        return {'generation_id': generation_id, 'decision': decision, 'status': outcome, 'memory': memory, 'trial': trial}

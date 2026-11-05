@@ -42,6 +42,55 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(len(state['generations']), 2)
         self.assertEqual([e['kind'] for e in state['generations'][1]['events']][0], 'birth')
 
+    def test_second_life_http_persists_realistic_verified_trace(self):
+        original = self.request('/api/start', {'version': 'v1', 'seed': 7})['generation']
+        with patch('amadeus.server.MuseAgent', return_value=lambda obs, mem: {'action': 'left', 'rationale': 'test only'}):
+            first = self.request('/api/step', {'generation_id': original['id']})
+        child = self.request('/api/continue-changed', {'generation_id': original['id']})['generation']
+        self.assertEqual((child['parent_id'], child['world_version'], child['seed']), (original['id'], 'v2', 7))
+        def decide(stage, context):
+            if stage == 'assess':
+                return {'memory_id': first['memory']['id'], 'evidence_id': 'inspection-1',
+                        'verdict': 'uncertain', 'rationale': 'test only'}
+            self.assertEqual(context['memories'], [])
+            return {'action': 'right', 'rationale': 'test only'}
+        with patch('amadeus.arena.MuseArenaAgent', return_value=decide):
+            result = self.request('/api/verified-step', {'generation_id': child['id']})
+        self.assertEqual(result['trial']['assessment']['verdict'], 'uncertain')
+        self.assertEqual(result['trial']['outcome'], result['status'])
+        saved = self.request('/api/state')
+        actual = next(g for g in saved['generations'] if g['id'] == child['id'])
+        self.assertEqual(next(e for e in actual['events'] if e['kind'] == 'verified_trial')['data'], result['trial'])
+        self.assertEqual(len(saved['memories']), 2)
+
+    def test_second_life_rejects_bad_state_and_sanitizes_model_failure(self):
+        first = self.request('/api/start', {'version': 'v1', 'seed': 7})['generation']
+        with self.assertRaises(HTTPError) as error:
+            self.request('/api/continue-changed', {'generation_id': first['id']})
+        self.assertEqual(error.exception.code, 400)
+        with patch('amadeus.server.MuseAgent', return_value=lambda obs, mem: {'action': 'left', 'rationale': 'test only'}):
+            self.request('/api/step', {'generation_id': first['id']})
+        child = self.request('/api/continue-changed', {'generation_id': first['id']})['generation']
+        def fail(stage, context):
+            raise RuntimeError('PRIVATE PROVIDER DETAILS')
+        with patch('amadeus.arena.MuseArenaAgent', return_value=fail):
+            with self.assertRaises(HTTPError) as error:
+                self.request('/api/verified-step', {'generation_id': child['id']})
+        self.assertEqual(error.exception.code, 502)
+        self.assertNotIn('PRIVATE', error.exception.read().decode())
+        saved = self.request('/api/state')
+        self.assertEqual(next(g for g in saved['generations'] if g['id'] == child['id'])['status'], 'alive')
+        self.assertEqual(len(saved['memories']), 1)
+        self.server.busy.acquire()
+        try:
+            with patch('amadeus.arena.MuseArenaAgent') as model:
+                with self.assertRaises(HTTPError) as error:
+                    self.request('/api/verified-step', {'generation_id': child['id']})
+                self.assertEqual(error.exception.code, 400)
+                model.assert_not_called()
+        finally:
+            self.server.busy.release()
+
     def test_bad_requests_rejected(self):
         for path, data in [('/api/start', {'version': 'v3', 'seed': 1}),
                            ('/api/start', {'version': 'v1', 'seed': True}),
@@ -58,6 +107,17 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 403)
         with urlopen(self.base + '/', timeout=5) as response:
             self.assertIn(b'AMADEUS', response.read())
+
+    def test_every_ui_file_is_utf8_and_every_script_is_served(self):
+        web = Path(__file__).resolve().parent.parent / 'web'
+        for path in web.iterdir():
+            path.read_bytes().decode('utf-8')
+        index = (web / 'index.html').read_text(encoding='utf-8')
+        for script in ('/world.js', '/results.js', '/app.js'):
+            self.assertIn(f'src="{script}"', index)
+            with urlopen(self.base + script, timeout=5) as response:
+                self.assertIn('javascript', response.headers['Content-Type'])
+                response.read().decode('utf-8')
 
     def test_model_failure_is_reported_and_does_not_write_a_decision(self):
         start = self.request('/api/start', {'version': 'v1', 'seed': 1})['generation']

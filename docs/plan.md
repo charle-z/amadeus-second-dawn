@@ -6,3 +6,5 @@
 4. Finish reproducible demo, documentation, tests, commits and publication. Stretch goals only after the central loop works.
 
 5. Extend the functioning MVP with matched inspection, consistent world versions and an independently reviewed exact planning preview; verify one bounded real Muse trial, tests and the local UI.
+
+6. Connect a recorded v1 life to a v2 child and explicitly requested verified Muse decision, preserving the existing interface, historical evidence and independent evaluator; validate errors, durable lineage, tests and presentation before publication.

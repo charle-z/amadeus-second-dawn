@@ -28,11 +28,17 @@ python -m unittest discover -s tests -v
 python -m amadeus.server
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Select `V1` and seed `7`, then **Start generation** and **Run Muse decision**. The backend makes a **real API request**; the UI shows its decision, independently evaluated result, timeline and memory. Click **Kill & restart** to create a child with the same world and seed. If the selected generation already won or died, its result stays intact; select its new living child and click again to demonstrate a kill. The default database is `.runtime/experiment.sqlite3` and is created automatically. Stop the server with Ctrl+C.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Select `v1` and seed `7`, then **New generation** and **Ask Muse to choose**. The backend makes a **real API request**; the UI shows its decision, independently evaluated result, timeline and memory. Click **Kill and restart** to create a child with the same world and seed. If the selected generation already won or died, its result stays intact; select its new living child and click again to demonstrate a kill. The default database is `.runtime/experiment.sqlite3` and is created automatically. Stop the server with Ctrl+C.
 
 To use a clean database, run `python -m amadeus.server --db .runtime/another-run.sqlite3`. Reusing a database retains its records. To demonstrate the first cycle in the terminal instead, use `python -m amadeus.demo --db .runtime/demo.sqlite3 --world v1 --seed 7` (create `.runtime` first if needed). The seed and deterministic rules make the environment reproducible, not the model's response. Live requests can fail because of authentication, network, quota, timeout or invalid/incomplete output; an error is not a simulated result.
 
 On macOS or Linux, set the same variable in the shell without saving it to a tracked file, then run the Python commands above. A Python virtual environment is optional.
+
+## Second Life: follow a memory across a changed world
+
+Select a completed `v1` generation with a recorded memory. Under **Second life**, choose **Continue in changed world** to create a `v2` child with the same seed and a link to its parent; this action makes no model call. Then select **Ask Muse to verify and decide**: the backend asks Muse to assess the parent memory against a fallible inspection, then choose an action. This makes up to two real Meta requests. The backend independently evaluates the action and stores the assessment, source memory, inspection and outcome. A failure does not fabricate an outcome. Existing generations and historical traces are preserved.
+
+The signal can be wrong, and an uncertain or inapplicable assessment withholds the memory before the action. World versions are visible. This is a controlled gate experiment, not evidence that an agent can resume arbitrary real-world work or that verified memory is generally superior. Automated tests use test doubles; do not call them real Muse runs.
 
 ## What is evaluated
 
@@ -42,7 +48,7 @@ Each decision records an observation, action, outcome and deterministic evaluato
 
 The comparison runs three policies against paired `stable` and `shifted` scenarios for each seed. `NO_MEMORY` receives no training memories; `NAIVE_MEMORY` receives the prior records without an applicability assessment; `VERIFIED_MEMORY` always inspects, then asks Muse to assess a supplied memory against that evidence before acting; only the memory judged applicable is supplied for its action. An uncertain or inapplicable verdict suppresses the memory and its assessment rationale from the subsequent action context; the full judgment remains in the audit trail. The assessment does not guarantee a correct decision. In the UI, matched inspection is the default: all three policies receive the same fallible signal and pay one inspection unit; VERIFIED still makes an extra model call. The optional mode preserves the earlier unequal-inspection design. World versions are visible to the model, so neither mode isolates verification as the only difference. The deterministic inspection hint is imperfect and can mislead. The training set is frozen before trials and does not learn from other policies' trials.
 
-In the interface, first create a `v1` memory with a real Muse decision, choose its seed in **Compare strategies**, and run the comparison. The interface runs one paired seed at a time; it can take minutes. It saves completed results and handled interruptions to SQLite, marking partial results as incomplete; an abrupt process termination can still lose in-flight work. The interface shows each strategy's action, outcome, cost, decision, inspection and evidence.
+In the interface, first create a `v1` memory with a real Muse decision, choose its seed under **What each strategy did**, and click **Run comparison**. The interface runs one paired seed at a time; it can take minutes. It saves completed results and handled interruptions to SQLite, marking partial results as incomplete; an abrupt process termination can still lose in-flight work. The interface shows each run as a strategy × world grid: the action, the outcome, the inspection hint and whether it was right (read back from the recorded outcome), Verified's verdict, the number of calls and Muse's own rationale. Clicking a cell replays the hint, the choice and the outcome.
 
 Alternatively, after the terminal demo has generated a `v1` memory for seed `7` in `.runtime/demo.sqlite3`, a real comparison can be run from the repository root:
 
@@ -95,4 +101,4 @@ A [single later real trial](docs/evidence/matched-single-trial.json) exercised V
 
 Project code is available under the [MIT License](LICENSE). Generated GitHub Spec Kit components retain their [upstream MIT notice](third_party/spec-kit/LICENSE).
 
-Optional UI renderer checks, when Node.js is installed: `node --test tests/test_world.js`. Python tests use only the standard library.
+Optional UI renderer checks, when Node.js is installed: `node --test tests/test_world.js tests/test_results.js`. Python tests use only the standard library.

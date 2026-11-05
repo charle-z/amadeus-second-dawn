@@ -14,6 +14,7 @@ Show real Muse decisions in deterministic changing worlds and compare how differ
 - Tests, instructions, and reproducible walkthrough accompany the implementation.
 - Compare policies with a mode that equalizes the fallible inspection and its cost; expose remaining differences.
 - Provide a bounded exact preview for selecting candidates under declared multidimensional reservations, without presenting it as live resource enforcement.
+- Link a recorded v1 generation to a v2 child with the same seed; the verified continuation must assess attributed parent evidence through the model before acting and persist the actual assessment, action, independent outcome and provenance. No automatic or simulated model call is presented as real.
 
 ## Constraints
 

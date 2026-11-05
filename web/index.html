@@ -2,36 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AMADEUS — SECOND DAWN: RE</title><link rel="stylesheet" href="/style.css">
+  <title>AMADEUS — Second Dawn</title><link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="top"><div class="brand"><span class="mark">A /</span><div><strong>AMADEUS</strong><small>SECOND DAWN: RE</small></div></div><div class="top-note"><span class="live"></span> LOCAL EXPERIMENT <span class="separator">/</span> META MUSE SPARK 1.3</div></header>
+  <header class="masthead">
+    <div class="wordmark"><strong>AMADEUS</strong><span>Second Dawn</span></div>
+    <div class="masthead-meta">muse-spark-1.3 · running on this machine</div>
+  </header>
   <main>
-    <section class="intro"><div><div class="eyebrow">EXPERIMENT 001 <span>/</span> MEMORY UNDER CHANGE</div><h1>What survives<br><em>when rules change?</em></h1><p>Real model decisions. Deterministic consequences. Memories carried into the next generation.</p></div><div class="intro-aside"><span>THE QUESTION</span><p>Can an agent learn when its memories can no longer be trusted?</p><small>An experiment, not a claim of consciousness.</small></div></section>
+    <section class="lede">
+      <p class="kicker">Experiment 001 · memory under changing rules</p>
+      <h1>Your memory says the left gate killed you. The rules may have changed. Do you still trust it?</h1>
+      <p class="lede-body">Muse picks a gate. A deterministic backend, not the model, decides whether it survives. Every outcome becomes a memory that the next generation inherits. Then we flip the rule and record what each memory strategy does with what it remembers.</p>
+    </section>
+
+    <section id="finding" class="finding" aria-live="polite"></section>
     <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
     <div class="layout">
-      <div class="left">
-        <section class="panel"><div class="panel-head"><div><div class="eyebrow">01 / CONTROL ROOM</div><h2>Start a generation</h2></div><span class="tag">REPRODUCIBLE</span></div>
-          <div class="form"><label>WORLD VERSION<select id="version"><option value="v1">V1 — original</option><option value="v2">V2 — changed rules</option></select></label><label>SEED<input id="seed" type="number" value="7" min="-1000000000" max="1000000000" step="1"></label><button id="start" class="primary">+ Start generation</button></div>
-          <div class="rule"></div><div class="selected-title"><div><span class="eyebrow">SELECTED GENERATION</span><h3 id="selected-title">No generation selected</h3></div><span id="selected-status" class="badge">—</span></div><p id="observation" class="muted">Start a generation to see its observation and let Muse choose an action.</p>
-<section class="world-view" aria-label="Selected generation world">
-            <div class="world-view-header"><span class="eyebrow">WORLD VIEW / TWO GATES</span><span id="world-metadata" class="world-metadata">NO GENERATION SELECTED</span></div>
+      <div class="col-main">
+        <section class="panel" aria-labelledby="world-title">
+          <div class="panel-head"><h2 id="world-title">The world</h2><span class="step-no">1</span></div>
+          <p class="panel-lead">Two gates, one fatal. The seed fixes which one; version v2 swaps it. Start a generation and let Muse choose.</p>
+          <div class="form">
+            <label>World<select id="version"><option value="v1">v1 · original rule</option><option value="v2">v2 · rule flipped</option></select></label>
+            <label>Seed<input id="seed" type="number" value="7" min="-1000000000" max="1000000000" step="1"></label>
+            <button id="start">New generation</button>
+          </div>
+          <div class="selected-title"><h3 id="selected-title">No generation selected</h3><span id="selected-status" class="badge">—</span></div>
+          <p id="observation" class="muted">Start a generation to see what Muse observes.</p>
+          <section class="world-view" aria-label="Selected generation">
+            <div class="world-view-header"><span id="world-metadata" class="world-metadata">NO GENERATION SELECTED</span></div>
             <div id="world-scene" class="world-scene" aria-hidden="true"><div id="world-left" class="world-door"><span>LEFT</span></div><div id="world-right" class="world-door"><span>RIGHT</span></div><span class="world-agent"></span></div>
             <p id="world-description" class="world-description" role="status" aria-live="polite">Start a generation to observe the world. No action has been recorded.</p>
           </section>
-          <div class="actions"><button id="step" class="primary" disabled>Run Muse decision →</button><button id="restart" class="danger" disabled>Kill &amp; restart ↻</button></div><p class="hint">The model chooses; the world evaluates. Kill &amp; restart preserves recorded memories.</p>
+          <div class="actions"><button id="step" class="primary" disabled>Ask Muse to choose</button><button id="restart" class="quiet" disabled>Kill and restart</button></div>
+          <p class="hint">Each click makes one real API call. A restart keeps every memory.</p>
         </section>
-        <section class="panel"><div class="panel-head"><div><div class="eyebrow">02 / AUDIT TRAIL</div><h2>Generation timeline</h2></div><span id="generation-count" class="count">0 GENERATIONS</span></div><div id="generations" class="generation-list empty">No generations yet.</div></section>
-        <section class="panel"><div class="panel-head"><div><div class="eyebrow">03 / MEMORY LAB</div><h2>Compare strategies</h2></div><span class="tag">REAL CALLS</span></div><p class="muted">Compare no memory, naive memory and verified memory across stable and changed worlds. First create a V1 memory with a Muse decision.</p><div class="compare-controls"><label>V1 TRAINING SEED<select id="compare-seed"></select></label><label>INSPECTION<select id="inspection-mode"><option value="matched">Matched for all</option><option value="optional">Optional / historical</option></select></label><button id="compare" class="primary">Run comparison →</button></div><p class="hint">Matched: all policies receive the same fallible inspection at equal cost; VERIFIED makes an extra assessment call. One paired seed per run. Handled interruptions are saved as incomplete.</p><div id="comparison-list" class="empty">No comparisons run yet.</div></section>
-        <section class="panel"><div class="panel-head"><div><div class="eyebrow">04 / CONCURRENT CELLS</div><h2>Two strategies, one world</h2></div><span class="tag">MAX 2 CELLS</span></div><p class="muted">Run NAIVE and VERIFIED concurrently with the same V1 training seed selected above. Each cell evaluates stable and shifted worlds.</p><div class="actions"><button id="cells" class="primary" disabled>Run two cells →</button></div><p id="cell-capacity" class="hint">Loading reservations…</p><p class="hint">Reservations are process-local admission limits; they do not enforce CPU or RAM quotas, a spending cap, or an account-wide limit. Partial runs are also saved and marked incomplete.</p><div id="cell-list" class="empty">No cell runs yet.</div></section>
-        <section class="panel" aria-labelledby="planner-title"><div class="panel-head"><div><div class="eyebrow">05 / RESOURCE PLANNER</div><h2 id="planner-title">Choose experiments</h2></div><span class="tag">NO MODEL CALLS</span></div>
-          <p class="muted">Exact selection for three illustrative candidates. Edit budgets to explore which combination has the highest declared value.</p>
+
+        <section class="panel second-life" aria-labelledby="second-life-title">
+          <div class="panel-head"><h2 id="second-life-title">Second life · when the world changes</h2><span class="step-no">↻</span></div>
+          <p class="panel-lead">Follow one real memory from an earlier life into a changed world. Muse checks it against a fallible hint; the backend still determines the outcome.</p>
+          <div id="second-life-story" class="second-life-story" aria-live="polite"></div>
+          <div class="actions"><button id="continue-changed" disabled>Continue in changed world →</button><button id="verified-step" class="primary" disabled>Ask Muse to verify and decide</button></div>
+          <p class="hint">The first button creates a linked life with no model call. The second makes two real Meta API calls; calls can fail and may incur charges. Historical evidence stays unchanged.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="results-title">
+          <div class="panel-head"><h2 id="results-title">What each strategy did</h2><span class="step-no">2</span></div>
+          <p class="panel-lead">Each cell is one recorded Muse decision. <strong>No memory</strong> sees nothing from the past. <strong>Naive</strong> gets every memory. <strong>Verified</strong> must first judge whether a memory still applies, and keeps it only if the answer is yes. Click a cell to replay it.</p>
+          <div class="compare-controls">
+            <label>Seed with a v1 memory<select id="compare-seed"></select></label>
+            <label>Inspection<select id="inspection-mode"><option value="matched">Same hint for everyone</option><option value="optional">Optional (older protocol)</option></select></label>
+            <button id="compare" class="primary">Run comparison</button>
+          </div>
+          <div id="comparison-list" class="empty">No comparisons recorded yet.</div>
+        </section>
+
+        <section class="panel" aria-labelledby="cells-title">
+          <div class="panel-head"><h2 id="cells-title">Two strategies in parallel</h2><span class="step-no">3</span></div>
+          <p class="panel-lead">Naive and Verified run on separate threads against the same memories. The server admits the pair only if both reservations fit: at most 4 calls per cell, 8 in total.</p>
+          <div class="actions"><button id="cells" class="primary" disabled>Run both cells</button></div>
+          <p id="cell-capacity" class="hint">Loading reservations…</p>
+          <div id="cell-list" class="empty">No parallel runs recorded yet.</div>
+        </section>
+
+        <section class="panel" aria-labelledby="timeline-title">
+          <div class="panel-head"><h2 id="timeline-title">Generations</h2><span id="generation-count" class="count">0</span></div>
+          <div id="generations" class="generation-list empty">No generations yet.</div>
+        </section>
+
+        <details class="appendix">
+          <summary>Appendix A · resource planner</summary>
+          <p class="muted">Picks the highest-value subset of candidate runs that fits declared budgets, by exact search. The three candidates are illustrative; nothing is launched and no model is called.</p>
           <div class="planner-example"><strong>A</strong> value 12 · CPU 600 · RAM 600 · time 1 · cost 1<br><strong>B</strong> value 9 · CPU 500 · RAM 500 · time 1 · cost 1<br><strong>C</strong> value 9 · CPU 500 · RAM 500 · time 1 · cost 1</div>
-          <div class="planner-budgets"><label>CPU (millicores)<input id="budget-cpu" type="number" min="0" max="1000000000000" step="1" value="1000"></label><label>RAM (MiB)<input id="budget-memory" type="number" min="0" max="1000000000000" step="1" value="1000"></label><label>RESERVED TIME (s)<input id="budget-time" type="number" min="0" max="1000000000000" step="1" value="2"></label><label>COST UNITS<input id="budget-cost" type="number" min="0" max="1000000000000" step="1" value="2"></label><label>CELL SLOTS<input id="budget-cells" type="number" min="0" max="1000000000000" step="1" value="2"></label></div>
-          <div class="actions"><button id="plan" class="primary">Find optimal selection →</button></div><p class="hint">Planning preview only: does not launch cells or enforce CPU, RAM, elapsed time or spending. Time is the sum of declared reservations.</p><div id="plan-result" class="empty" role="status" aria-live="polite">No plan calculated.</div>
-        </section>
+          <div class="planner-budgets"><label>CPU (millicores)<input id="budget-cpu" type="number" min="0" max="1000000000000" step="1" value="1000"></label><label>RAM (MiB)<input id="budget-memory" type="number" min="0" max="1000000000000" step="1" value="1000"></label><label>Reserved time (s)<input id="budget-time" type="number" min="0" max="1000000000000" step="1" value="2"></label><label>Cost units<input id="budget-cost" type="number" min="0" max="1000000000000" step="1" value="2"></label><label>Cell slots<input id="budget-cells" type="number" min="0" max="1000000000000" step="1" value="2"></label></div>
+          <div class="actions"><button id="plan">Find best selection</button></div>
+          <div id="plan-result" class="empty" role="status" aria-live="polite">No plan calculated.</div>
+        </details>
+
+        <details class="appendix">
+          <summary>Appendix B · what this setup can and cannot show</summary>
+          <ul class="limits">
+            <li>The world has one rule and two gates, so a flipped rule always means the other gate.</li>
+            <li>Muse sees the world version label, and it changes exactly when the rule flips. Using a memory well and reading the label are not yet separable.</li>
+            <li>The inspection hint is fixed per seed and world, and is wrong for about one in four. Some seeds get a wrong hint in both worlds.</li>
+            <li>Verified makes one extra model call. Each strategy is sampled once per world, so no ranking of strategies is claimed.</li>
+            <li>Reservations limit calls and output tokens inside this process. They do not cap CPU, RAM or spending.</li>
+          </ul>
+        </details>
       </div>
-      <aside class="panel memory-panel"><div class="panel-head"><div><div class="eyebrow">06 / PERSISTENT RECORD</div><h2>Memory archive</h2></div><span id="memory-count" class="count">0</span></div><p class="muted">Every record comes from a world-evaluated outcome, with its original context and evidence.</p><div id="memories" class="memory-list empty">No memories recorded yet.</div></aside>
+
+      <aside class="panel memory-panel" aria-labelledby="memory-title">
+        <div class="panel-head"><h2 id="memory-title">Memory</h2><span id="memory-count" class="count">0</span></div>
+        <p class="muted">Written by the backend after each outcome, with the observation it came from.</p>
+        <div id="memories" class="memory-list empty">No memories recorded yet.</div>
+      </aside>
     </div>
-  </main><footer><span>AMADEUS / SECOND DAWN: RE</span><span>BUILT TO QUESTION THE PAST</span></footer><script src="/world.js" defer></script><script src="/app.js" defer></script>
+  </main>
+  <footer><span>AMADEUS · Second Dawn</span><span>MIT licensed · Meta Global AI Developer Hackathon 2026</span></footer>
+  <script src="/world.js" defer></script><script src="/results.js" defer></script><script src="/app.js" defer></script>
 </body></html>

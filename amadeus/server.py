@@ -13,6 +13,7 @@ WEB = Path(__file__).resolve().parent.parent / 'web'
 STATIC = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'application/javascript; charset=utf-8'),
           '/world.js': ('world.js', 'application/javascript; charset=utf-8'),
+          '/results.js': ('results.js', 'application/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
 
 
@@ -135,6 +136,17 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError('Another model run is in progress')
                 try:
                     return exp.step(generation_id, MuseAgent())
+                finally:
+                    self.server.busy.release()
+            if self.path in ('/api/continue-changed', '/api/verified-step') and set(data) == {'generation_id'}:
+                generation_id = integer(data['generation_id'], 1, 2**53 - 1)
+                if self.path == '/api/continue-changed':
+                    return {'generation': exp.continue_changed(generation_id)}
+                if not self.server.busy.acquire(blocking=False):
+                    raise ValueError('Another model run is in progress')
+                try:
+                    from .arena import MuseArenaAgent
+                    return exp.verified_step(generation_id, MuseArenaAgent())
                 finally:
                     self.server.busy.release()
             if self.path == '/api/comparison' and set(data) in ({'seeds'}, {'seeds', 'inspection_mode'}):
