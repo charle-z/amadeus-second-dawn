@@ -25,3 +25,8 @@ ChatGPT interface reasoning level Pro 5/5 reviewed public commit `4ab0602e999ae7
 ## Second Life — 2026-11-04
 
 A v1 generation with a recorded outcome can create a v2 child with the same seed. An explicitly requested verified step uses only the parent memory, a fallible inspection and at most two model calls. The backend independently determines the outcome, persists provenance, and records handled interruptions without inventing outcomes. Automated tests use test doubles. A subsequent real two-call Muse trace is preserved in docs/evidence/second-life-seed-7.json: verdict uncertain, action right, outcome dead; 550 input and 647 completion tokens. This one observation establishes no general ranking. The existing video predates it and is labeled a historical evidence replay.
+
+
+## Practical continuity — 2026-11-04
+
+A separate read-only workflow stores a user objective and snapshots of explicitly selected files within AMADEUS_WORKSPACE, compares actual changes on resume, checks Python/JSON syntax without execution, and asks Muse to reconsider the prior analysis with validated quotations. It requires a configured workspace and an explicit click before sending selected content to Meta. Secret filters are not comprehensive; no file execution, editing or atomic filesystem snapshot is claimed.

@@ -19,3 +19,7 @@ Show real Muse decisions in deterministic changing worlds and compare how differ
 ## Constraints
 
 Small local modular monolith; bounded calls and tokens. No distributed platform. Meta API failure must be visible, never disguised as a real decision. Do not touch Aeontra.
+
+## Practical continuity slice
+
+A user can preserve an explicit work objective and selected text files from a configured workspace, restart the process, inspect actual file changes and request a Muse assessment with source quotations checked by the backend. This is a read-only continuity assistant, not autonomous execution. Explicitly disclose that selected content is stored locally and transmitted to Meta; restrict paths, file types and sizes, reject likely credentials, and explain that secret detection is not exhaustive.

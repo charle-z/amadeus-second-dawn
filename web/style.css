@@ -201,3 +201,15 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8p
 .second-life-item { display: grid; gap: 3px; border-left: 2px solid var(--rule-strong); padding: 4px 12px; }
 .second-life-item strong { font: 600 12px var(--mono); text-transform: uppercase; }
 .second-life-item span { font-size: 14px; line-height: 1.5; }
+
+
+/* Read-only task continuity */
+.work-panel { margin: 0 0 24px; border-color: var(--rule-strong); }
+.work-badge { color: var(--muted); font: 11px var(--mono); letter-spacing: .06em; }
+.work-fields { display: grid; gap: 12px; margin-top: 16px; }
+.work-fields textarea { resize: vertical; width: 100%; padding: 10px; border: 1px solid var(--rule-strong); border-radius: 3px; background: var(--paper); color: var(--ink); font: 14px var(--mono); }
+.work-select-label { margin-top: 22px; }
+.work-result { margin-top: 14px; padding: 14px; border: 1px solid var(--rule); background: var(--paper); overflow-wrap: anywhere; }
+.work-result h3 { margin: 16px 0 6px; }
+.work-finding { border-left: 2px solid var(--hint); padding-left: 12px; margin: 12px 0; }
+.work-warning { border-left: 3px solid var(--hint); padding-left: 10px; }

@@ -1,6 +1,7 @@
 """Local-only web interface. All model calls and the API key stay on the server."""
 import argparse
 import json
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,6 +24,7 @@ class Server(ThreadingHTTPServer):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.busy = threading.Lock()
+        self.work_root = os.environ.get('AMADEUS_WORKSPACE')
         self.cells = CellCoordinator()
         exp = Experiment(self.db_path)
         try:
@@ -85,7 +87,10 @@ class Handler(BaseHTTPRequestHandler):
                            exp.db.execute('SELECT result FROM ui_comparisons ORDER BY id DESC LIMIT 10')]
             cell_runs = [json.loads(row['result']) for row in
                          exp.db.execute('SELECT result FROM ui_cell_runs ORDER BY id DESC LIMIT 10')]
-            self.send_json(200, {'generations': generations, 'memories': exp.memories(), 'comparisons': comparisons,
+            from .work import WorkManager
+            work = WorkManager(exp.db, self.server.work_root)
+            self.send_json(200, {'work_available': work.root is not None, 'work_tasks': work.list_tasks(),
+                                 'generations': generations, 'memories': exp.memories(), 'comparisons': comparisons,
                                  'cell_runs': cell_runs, 'cell_reservations': self.server.cells.snapshot(),
                                  'cell_capacity': {'max_concurrent_cells': MAX_SLOTS, 'max_calls': MAX_CALLS,
                                                    'max_output_tokens': MAX_OUTPUT, 'per_cell_calls': CALLS_PER_CELL}})
@@ -124,6 +129,18 @@ class Handler(BaseHTTPRequestHandler):
             return select_exact(data['candidates'], data['budgets'])
         exp = Experiment(self.server.db_path)
         try:
+            if self.path == '/api/work/start' and set(data) == {'goal', 'paths'}:
+                from .work import WorkManager
+                return WorkManager(exp.db, self.server.work_root).start(data['goal'], data['paths'])
+            if self.path == '/api/work/resume' and set(data) == {'task_id'}:
+                task_id = integer(data['task_id'], 1, 2**53 - 1)
+                if not self.server.busy.acquire(blocking=False):
+                    raise ValueError('Another model run is in progress')
+                try:
+                    from .work import WorkManager, MuseWorkAgent
+                    return WorkManager(exp.db, self.server.work_root).resume(task_id, MuseWorkAgent())
+                finally:
+                    self.server.busy.release()
             if self.path == '/api/start' and set(data) == {'version', 'seed'}:
                 if data['version'] not in ('v1', 'v2'):
                     raise ValueError('Invalid world version')

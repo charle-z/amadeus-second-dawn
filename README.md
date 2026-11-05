@@ -34,6 +34,19 @@ To use a clean database, run `python -m amadeus.server --db .runtime/another-run
 
 On macOS or Linux, set the same variable in the shell without saving it to a tracked file, then run the Python commands above. A Python virtual environment is optional.
 
+## Continue real work on selected files
+
+The **Continue real work** panel provides a bounded, read-only continuity workflow. Set the workspace root in the backend process before starting the server. For example, from the chosen project root in PowerShell:
+
+```powershell
+$env:AMADEUS_WORKSPACE = (Get-Location).Path
+python -m amadeus.server --port 8765
+```
+
+Enter a goal and up to four explicit, workspace-relative UTF-8 files (one per line, maximum 16 KiB each). Saving stores the goal and file snapshots in the local SQLite database; it makes no model request. Later, **Compare and ask Muse** reads the selected files again, detects missing or changed files using SHA-256, compares against the original snapshot and last review, runs syntax checks on Python and JSON without executing them, and sends the goal and selected contents to Meta for a proposed next step. The prior model analysis is included as fallible context. Returned quotations are checked against the current file contents. A valid quote does not prove the associated conclusion is correct. Each comparison makes one real Meta request and may incur charges.
+
+Access is limited to the configured root and explicit paths. Hidden or credential-named paths and common credential patterns are rejected; the detector is **not exhaustive**. Select only content you are comfortable storing locally and sharing with Meta. A second read rejects detected changes during analysis, but files are not locked and this is not an atomic snapshot or a security boundary against a hostile local process. Syntax checks do not run the code or establish functional correctness. The assistant does not edit files or execute proposed commands.
+
 ## Second Life: follow a memory across a changed world
 
 Select a completed `v1` generation with a recorded memory. Under **Second life**, choose **Continue in changed world** to create a `v2` child with the same seed and a link to its parent; this action makes no model call. Then select **Ask Muse to verify and decide**: the backend asks Muse to assess the parent memory against a fallible inspection, then choose an action. This makes up to two real Meta requests. The backend independently evaluates the action and stores the assessment, source memory, inspection and outcome. A failure does not fabricate an outcome. Existing generations and historical traces are preserved.

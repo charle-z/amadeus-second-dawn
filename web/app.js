@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 const R = window.AmadeusResults;
 let selected = null;
+let workSelected = null;
 let current = {generations: [], memories: [], comparisons: [], cell_runs: []};
 let running = false;
 
@@ -55,7 +56,7 @@ function render() {
   $('restart').disabled = !gen || running;
   $('generation-count').textContent = String(current.generations.length);
   $('memory-count').textContent = String(current.memories.length);
-  renderFinding(); renderGenerations(); renderMemories(); renderComparisons(); renderCells(); renderSecondLife();
+  renderFinding(); renderGenerations(); renderMemories(); renderComparisons(); renderCells(); renderSecondLife(); renderWork();
 }
 
 // Derive the story exclusively from persisted generations, memories and events.
@@ -116,6 +117,99 @@ function renderSecondLife() {
   story.append(details('Full recorded evidence', trial));
   if (state.interrupted) story.append(details('Earlier incomplete attempt', state.interrupted));
 }
+
+function workPaths(text) {
+  return String(text || '').split(/\r?\n/).map(path => path.trim()).filter(Boolean);
+}
+function workState(state, selectedId) {
+  const tasks = Array.isArray(state.work_tasks) ? state.work_tasks : [];
+  return {available: state.work_available === true, tasks,
+    task: tasks.find(item => item.id === selectedId) || tasks[0] || null};
+}
+function workDiagnosticText(item) {
+  let text = `${item.path} · ${item.check} · ${item.status}`;
+  if (Number.isInteger(item.line) && item.line > 0) {
+    text += ` · line ${item.line}`;
+    if (Number.isInteger(item.column) && item.column > 0) text += `, column ${item.column}`;
+  }
+  return text;
+}
+function renderWork() {
+  const view = workState(current, workSelected);
+  const task = view.task;
+  workSelected = task ? task.id : null;
+  $('work-availability').textContent = view.available
+    ? 'Workspace enabled. Only explicitly listed files are inspected.'
+    : 'Workspace unavailable. Set AMADEUS_WORKSPACE on the server and restart it to use this feature.';
+  $('work-start').disabled = running || !view.available;
+  $('work-resume').disabled = running || !view.available || !task;
+  $('work-select').disabled = running || !view.tasks.length;
+  const selector = $('work-select'); selector.replaceChildren();
+  if (!view.tasks.length) selector.append(el('option', 'No saved objectives'));
+  for (const item of view.tasks) {
+    const option = el('option', `#${item.id} · ${item.goal}`);
+    option.value = String(item.id); option.selected = item.id === workSelected; selector.append(option);
+  }
+  const box = $('work-result'); box.replaceChildren();
+  if (!task) { box.textContent = 'No saved objectives yet.'; return; }
+  box.append(el('strong', `Objective #${task.id}`), el('p', task.goal));
+  box.append(el('div', `Monitoring: ${(task.paths || []).join(', ')}`, 'gen-meta'));
+  const result = task.last_result;
+  if (!result) { box.append(el('p', 'Snapshot saved. No Muse analysis has been run yet.', 'hint')); return; }
+  if (result.previous_analysis) {
+    box.append(el('h3', 'Earlier analysis, reconsidered'),
+      el('p', result.previous_analysis.summary),
+      el('p', `Earlier proposed step: ${result.previous_analysis.next_step || '—'}`, 'gen-meta'));
+    box.append(details('Earlier analysis and its citations', result.previous_analysis));
+  }
+  if (Array.isArray(result.changes)) {
+    const heading = el('h3', 'File changes since the saved snapshot'); box.append(heading);
+    for (const change of result.changes) {
+      const recent = change.since_last_status && change.since_last_status !== 'not_compared'
+        ? ` · since last review: ${change.since_last_status}` : '';
+      box.append(el('p', `${change.path}: ${change.status}${recent}`));
+      if (change.diff) {
+        const panel = el('details', null, 'raw');
+        panel.append(el('summary', `Difference for ${change.path}`), el('pre', change.diff));
+        box.append(panel);
+      }
+    }
+  }
+  if (Array.isArray(result.diagnostics) && result.diagnostics.length) {
+    box.append(el('h3', 'Deterministic syntax checks'));
+    for (const diagnostic of result.diagnostics) box.append(el('p', workDiagnosticText(diagnostic)));
+    box.append(el('p', 'Syntax checks do not establish functional correctness.', 'hint'));
+  }
+  const analysis = result.analysis;
+  if (analysis) {
+    box.append(el('h3', 'Muse analysis'), el('p', analysis.summary));
+    for (const finding of analysis.findings || []) {
+      const entry = el('div', null, 'work-finding');
+      entry.append(el('strong', finding.path), el('p', `“${finding.quote}”`), el('p', finding.assessment));
+      box.append(entry);
+    }
+    box.append(el('h3', 'Proposed next step'), el('p', analysis.next_step));
+    box.append(el('p', 'This is a proposal, not an executed action. Check the evidence before acting.', 'hint'));
+  }
+  box.append(details('Recorded result and evidence', result));
+}
+async function workAction(button, path, payload, waiting) {
+  running = true; render(); button.disabled = true; notify(waiting);
+  try {
+    const result = await api(path, payload);
+    if (result.task) workSelected = result.task.id;
+    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : 'Muse analysis saved. Check the evidence before acting.');
+  } catch (error) { notify(error.message, true); }
+  finally { running = false; await refresh().catch(error => notify(error.message, true)); }
+}
+$('work-select').onchange = event => { workSelected = Number(event.target.value); renderWork(); };
+$('work-start').onclick = () => {
+  const goal = $('work-goal').value.trim();
+  const paths = workPaths($('work-paths').value);
+  if (!goal || !paths.length) return notify('Enter an objective and at least one relative file path.', true);
+  workAction($('work-start'), '/api/work/start', {goal, paths}, 'Saving the objective and selected file snapshots…');
+};
+$('work-resume').onclick = () => workAction($('work-resume'), '/api/work/resume', {task_id: workSelected}, 'Comparing files and waiting for a real Muse analysis…');
 
 function renderFinding() {
   const box = $('finding');

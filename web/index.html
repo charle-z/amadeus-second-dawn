@@ -12,8 +12,24 @@
   <main>
     <section class="lede">
       <p class="kicker">Experiment 001 · memory under changing rules</p>
-      <h1>Your memory says the left gate killed you. The rules may have changed. Do you still trust it?</h1>
-      <p class="lede-body">Muse picks a gate. A deterministic backend, not the model, decides whether it survives. Every outcome becomes a memory that the next generation inherits. Then we flip the rule and record what each memory strategy does with what it remembers.</p>
+      <h1>Continue a task when its files change.</h1>
+      <p class="lede-body">Record a goal and selected files, then return later to see what changed and ask Muse to reassess the evidence. Explore the controlled memory experiment below.</p>
+    </section>
+
+    <section class="panel work-panel" aria-labelledby="work-title">
+      <div class="panel-head"><h2 id="work-title">Continue real work</h2><span class="work-badge">READ ONLY</span></div>
+      <p class="panel-lead">Save an objective and a snapshot of selected files in the configured workspace. Return later to compare the current files with that snapshot and get a proposed next step. Amadeus does not edit files or execute commands.</p>
+      <p id="work-availability" class="hint" role="status"></p>
+      <div class="work-fields">
+        <label>Objective<input id="work-goal" type="text" maxlength="500" placeholder="Review the project plan and identify what changed"></label>
+        <label>Files to monitor · one relative path per line<textarea id="work-paths" rows="3" placeholder="README.md&#10;docs/plan.md"></textarea></label>
+      </div>
+      <p class="hint">Saving stores the objective and selected file contents locally. Choose files you are comfortable keeping in this workspace.</p>
+      <div class="actions"><button id="work-start" class="primary">Save objective and snapshot</button></div>
+      <label class="work-select-label">Saved objective<select id="work-select" aria-label="Saved objective"></select></label>
+      <div id="work-result" class="work-result" aria-live="polite">No saved objectives yet.</div>
+      <p class="hint work-warning">By clicking Compare and ask Muse, you send the objective and selected file contents to Meta. They are also stored locally. Secret filtering is limited and cannot detect everything: choose only files and information you are comfortable sharing. This makes a real API call that may incur charges.</p>
+      <div class="actions"><button id="work-resume" disabled>Compare and ask Muse</button></div>
     </section>
 
     <section id="finding" class="finding" aria-live="polite"></section>
