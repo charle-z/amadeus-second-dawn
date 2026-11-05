@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const R = window.AmadeusResults;
 let selected = null;
 let workSelected = null;
+let workInspection = null;
 let current = {generations: [], memories: [], comparisons: [], cell_runs: []};
 let running = false;
 
@@ -144,6 +145,12 @@ function workHistory(task) {
     result: item.result,
   }));
 }
+function workReviewStatus(inspection) {
+  if (!inspection) return 'The latest review has not been checked against current files.';
+  if (inspection.review_status === 'no_review') return 'No Muse review exists for this objective.';
+  if (inspection.review_status === 'unchanged') return 'Files were unchanged since the latest review.';
+  return 'Files changed since the latest review; reconsider its recommendations.';
+}
 function renderWork() {
   const view = workState(current, workSelected);
   const task = view.task;
@@ -152,6 +159,7 @@ function renderWork() {
     ? 'Workspace enabled. Only explicitly listed files are inspected.'
     : 'Workspace unavailable. Set AMADEUS_WORKSPACE on the server and restart it to use this feature.';
   $('work-start').disabled = running || !view.available;
+  $('work-inspect').disabled = running || !view.available || !task;
   $('work-resume').disabled = running || !view.available || !task;
   $('work-delete').disabled = running || !view.available || !task;
   $('work-select').disabled = running || !view.tasks.length;
@@ -165,6 +173,16 @@ function renderWork() {
   if (!task) { box.textContent = 'No saved objectives yet.'; return; }
   box.append(el('strong', `Objective #${task.id}`), el('p', task.goal));
   box.append(el('div', `Monitoring: ${(task.paths || []).join(', ')}`, 'gen-meta'));
+  const inspection = workInspection && workInspection.task_id === task.id ? workInspection : null;
+  const reviewId = task.review_history?.[0]?.id ?? null;
+  const reviewChanged = inspection && (inspection.review_id ?? null) !== reviewId;
+  const statusText = reviewChanged ? 'The latest review changed after this file check; check again.'
+    : !inspection && !task.last_result ? 'No Muse review exists for this objective.' : workReviewStatus(inspection);
+  box.append(el('p', statusText, 'hint'));
+  if (inspection) {
+    box.append(el('h3', 'Local file check'), el('p', `Checked at ${inspection.inspected_at}. Files can change afterwards.`, 'gen-meta'));
+    appendWorkFiles(box, inspection);
+  }
   const result = task.last_result;
   if (!result) { box.append(el('p', 'Snapshot saved. No Muse analysis has been run yet.', 'hint')); return; }
   const history = workHistory(task);
@@ -189,6 +207,21 @@ function appendWorkReview(box, result) {
       el('p', `Earlier proposed step: ${result.previous_analysis.next_step || '—'}`, 'gen-meta'));
     box.append(details('Earlier analysis and its citations', result.previous_analysis));
   }
+  appendWorkFiles(box, result);
+  const analysis = result.analysis;
+  if (analysis) {
+    box.append(el('h3', 'Muse analysis'), el('p', analysis.summary));
+    for (const finding of analysis.findings || []) {
+      const entry = el('div', null, 'work-finding');
+      entry.append(el('strong', finding.path), el('p', `“${finding.quote}”`), el('p', finding.assessment));
+      box.append(entry);
+    }
+    box.append(el('h3', 'Proposed next step'), el('p', analysis.next_step));
+    box.append(el('p', 'This is a proposal, not an executed action. Check the evidence before acting.', 'hint'));
+  }
+  box.append(details('Recorded result and evidence', result));
+}
+function appendWorkFiles(box, result) {
   if (Array.isArray(result.changes)) {
     const heading = el('h3', 'File changes since the saved snapshot'); box.append(heading);
     for (const change of result.changes) {
@@ -207,30 +240,21 @@ function appendWorkReview(box, result) {
     for (const diagnostic of result.diagnostics) box.append(el('p', workDiagnosticText(diagnostic)));
     box.append(el('p', 'Syntax checks do not establish functional correctness.', 'hint'));
   }
-  const analysis = result.analysis;
-  if (analysis) {
-    box.append(el('h3', 'Muse analysis'), el('p', analysis.summary));
-    for (const finding of analysis.findings || []) {
-      const entry = el('div', null, 'work-finding');
-      entry.append(el('strong', finding.path), el('p', `“${finding.quote}”`), el('p', finding.assessment));
-      box.append(entry);
-    }
-    box.append(el('h3', 'Proposed next step'), el('p', analysis.next_step));
-    box.append(el('p', 'This is a proposal, not an executed action. Check the evidence before acting.', 'hint'));
-  }
-  box.append(details('Recorded result and evidence', result));
 }
 async function workAction(button, path, payload, waiting) {
+  if (path !== '/api/work/resume') workInspection = null;
   running = true; render(); button.disabled = true; notify(waiting);
   try {
     const result = await api(path, payload);
     if (result.task) workSelected = result.task.id;
     if (path === '/api/work/delete') workSelected = null;
-    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : path === '/api/work/delete' ? 'Local objective and snapshots deleted.' : 'Muse analysis saved. Check the evidence before acting.');
+    if (path === '/api/work/resume') workInspection = null;
+    if (path === '/api/work/inspect') workInspection = result;
+    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : path === '/api/work/delete' ? 'Local objective and snapshots deleted.' : path === '/api/work/inspect' ? 'Local check completed. No model call was made.' : 'Muse analysis saved. Check the evidence before acting.');
   } catch (error) { notify(error.message, true); }
   finally { running = false; await refresh().catch(error => notify(error.message, true)); }
 }
-$('work-select').onchange = event => { workSelected = Number(event.target.value); renderWork(); };
+$('work-select').onchange = event => { workInspection = null; workSelected = Number(event.target.value); renderWork(); };
 $('work-start').onclick = () => {
   const goal = $('work-goal').value.trim();
   const paths = workPaths($('work-paths').value);
@@ -238,6 +262,7 @@ $('work-start').onclick = () => {
   workAction($('work-start'), '/api/work/start', {goal, paths}, 'Saving the objective and selected file snapshots…');
 };
 $('work-resume').onclick = () => workAction($('work-resume'), '/api/work/resume', {task_id: workSelected}, 'Comparing files and waiting for a real Muse analysis…');
+$('work-inspect').onclick = () => workAction($('work-inspect'), '/api/work/inspect', {task_id: workSelected}, 'Checking selected files locally…');
 $('work-delete').onclick = () => {
   if (running || !workSelected || !confirmWorkDelete(message => window.confirm(message))) return;
   workAction($('work-delete'), '/api/work/delete', {task_id: workSelected}, 'Deleting the selected local objective…');

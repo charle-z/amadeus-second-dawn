@@ -132,6 +132,10 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/api/work/start' and set(data) == {'goal', 'paths'}:
                 from .work import WorkManager
                 return WorkManager(exp.db, self.server.work_root).start(data['goal'], data['paths'])
+            if self.path == '/api/work/inspect' and set(data) == {'task_id'}:
+                from .work import WorkManager
+                task_id = integer(data['task_id'], 1, 2**53 - 1)
+                return WorkManager(exp.db, self.server.work_root).inspect(task_id)
             if self.path == '/api/work/delete' and set(data) == {'task_id'}:
                 task_id = integer(data['task_id'], 1, 2**53 - 1)
                 if not self.server.busy.acquire(blocking=False):

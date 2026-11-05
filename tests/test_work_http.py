@@ -61,4 +61,16 @@ class WorkHTTPTests(unittest.TestCase):
             self.request('/api/work/start', {'goal':'inspect','paths':['notes.md']}, {'Content-Type':'application/json','Origin':'https://evil.example'})
         self.assertEqual(e.exception.code,403)
 
+    def test_inspection_is_local_and_rejects_cross_origin(self):
+        task = self.request('/api/work/start', {'goal': 'inspect', 'paths': ['notes.md']})['task']
+        (self.workspace/'notes.md').write_text('updated locally', encoding='utf-8')
+        with patch('amadeus.work.MuseWorkAgent', side_effect=AssertionError('model must not be used')):
+            result = self.request('/api/work/inspect', {'task_id': task['id']})
+        self.assertEqual(result['review_status'], 'no_review')
+        self.assertEqual(result['changes'][0]['status'], 'changed')
+        with self.assertRaises(HTTPError) as error:
+            self.request('/api/work/inspect', {'task_id': task['id']},
+                         {'Content-Type': 'application/json', 'Origin': 'https://evil.example'})
+        self.assertEqual(error.exception.code, 403)
+
 if __name__ == '__main__': unittest.main()

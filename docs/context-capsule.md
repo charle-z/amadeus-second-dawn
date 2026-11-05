@@ -6,7 +6,7 @@ AMADEUS combines a read-only continuity assistant for explicitly selected worksp
 
 ## Continuity workflow
 
-The configured workspace bounds file access. A saved objective and snapshots survive process restarts. Reviews compare actual files against the saved snapshots, run non-executing Python and JSON syntax checks, and ask Muse for an assessment with literal source quotations. The interface shows recent reviews. Deleting an objective removes its associated local snapshots and reviews.
+The configured workspace bounds file access. A saved objective and snapshots survive process restarts. Local checks compare files and run non-executing Python and JSON syntax checks without a model call; they report whether files changed since the last model review. Model reviews ask Muse for an assessment with literal source quotations. The interface shows recent reviews. Deleting an objective removes its associated local snapshots and reviews.
 
 Selected files and objectives are stored locally and sent to Meta when a model review is requested. Credential filtering is not exhaustive. File reads are not atomic snapshots against hostile concurrent writers; model recommendations require human review and are not executed automatically.
 

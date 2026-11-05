@@ -7,7 +7,7 @@
 <body>
   <header class="masthead">
     <div class="wordmark"><strong>AMADEUS</strong><span>Second Dawn</span></div>
-    <div class="masthead-meta">muse-spark-1.3 · running on this machine</div>
+    <div class="masthead-meta">Local app · Muse via Meta API</div>
   </header>
   <main>
     <section class="lede">
@@ -28,8 +28,8 @@
       <div class="actions"><button id="work-start" class="primary">Save objective and snapshot</button></div>
       <label class="work-select-label">Saved objective<select id="work-select" aria-label="Saved objective"></select></label>
       <div id="work-result" class="work-result" aria-live="polite">No saved objectives yet.</div>
-      <p class="hint work-warning">By clicking Compare and ask Muse, you send the objective and selected file contents to Meta. They are also stored locally. Secret filtering is limited and cannot detect everything: choose only files and information you are comfortable sharing. This makes a real API call that may incur charges.</p>
-      <div class="actions"><button id="work-resume" disabled>Compare and ask Muse</button><button id="work-delete" disabled>Delete saved objective</button></div><p class="hint">Deletion removes the selected local objective and snapshots, not backups or data previously sent to Meta.</p>
+      <p class="hint work-warning">By clicking Compare and ask Muse, you send the objective, current selected files, previous analysis and file differences to Meta. Differences may include text removed since the snapshot. They are also stored locally. Secret filtering is limited and cannot detect everything: choose only information you are comfortable sharing. This makes a real API call that may incur charges; larger files increase the amount sent.</p>
+      <div class="actions"><button id="work-inspect" disabled>Check files locally</button><button id="work-resume" disabled>Compare and ask Muse</button><button id="work-delete" disabled>Delete saved objective</button></div><p class="hint">Local checks make no model call. Deletion removes the selected local objective and snapshots, not backups or data previously sent to Meta.</p>
     </section>
 
     <section id="finding" class="finding" aria-live="polite"></section>
