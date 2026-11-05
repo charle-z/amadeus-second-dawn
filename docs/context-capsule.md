@@ -30,3 +30,5 @@ A v1 generation with a recorded outcome can create a v2 child with the same seed
 ## Practical continuity — 2026-11-04
 
 A separate read-only workflow stores a user objective and snapshots of explicitly selected files within AMADEUS_WORKSPACE, compares actual changes on resume, checks Python/JSON syntax without execution, and asks Muse to reconsider the prior analysis with validated quotations. It requires a configured workspace and an explicit click before sending selected content to Meta. Secret filters are not comprehensive; no file execution, editing or atomic filesystem snapshot is claimed.
+
+One real practical review used two public project files and detected a real specification change; Muse returned three literally verified citations and a next step. One request reported 1,513 input / 449 completion tokens. Its proposed test may already be covered elsewhere; the model saw only selected files. Evidence: docs/evidence/work-continuity-real.json.

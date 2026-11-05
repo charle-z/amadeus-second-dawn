@@ -23,3 +23,5 @@ Small local modular monolith; bounded calls and tokens. No distributed platform.
 ## Practical continuity slice
 
 A user can preserve an explicit work objective and selected text files from a configured workspace, restart the process, inspect actual file changes and request a Muse assessment with source quotations checked by the backend. This is a read-only continuity assistant, not autonomous execution. Explicitly disclose that selected content is stored locally and transmitted to Meta; restrict paths, file types and sizes, reject likely credentials, and explain that secret detection is not exhaustive.
+
+On each review, run Python and JSON syntax checks without executing selected files, preserve the previous model analysis as fallible context, and validate that cited quotations appear in the files read. Syntax checks and quotation matching do not prove a recommendation correct.

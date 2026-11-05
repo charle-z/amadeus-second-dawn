@@ -15,4 +15,4 @@
 - [x] Verify the Second Life transition with test doubles and preserve one separate real two-call Muse trace.
 
 - [x] Implement and validate practical file-based continuity with deterministic syntax checks and documented limits.
-- [ ] Record one bounded real Muse verification of the practical workflow.
+- [x] Record one bounded real Muse verification of the practical workflow.

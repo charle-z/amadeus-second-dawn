@@ -2,7 +2,7 @@
 
 **Can an AI survive changing worlds by learning not only what to remember, but when its memories can no longer be trusted?**
 
-AMADEUS is a small, local experiment in which `muse-spark-1.3` chooses actions and a deterministic backend evaluates the consequences. Generations can die or be killed and restart from a reproducible state while a SQLite database retains memories and their provenance. This is an experiment about decisions and evidence, not a claim of consciousness or emergent intelligence.
+AMADEUS helps a user resume work on explicitly selected project files: it preserves an objective and snapshots, detects changes, performs read-only Python and JSON syntax checks, and asks `muse-spark-1.3` to reassess the evidence and suggest a next step. It also includes a controlled experiment in which model decisions have deterministic consequences and memories persist across generations. The current assistant does not autonomously execute commands or edit files, and the experiment makes no claim of consciousness or emergent intelligence.
 
 ## Current status
 
@@ -46,6 +46,8 @@ python -m amadeus.server --port 8765
 Enter a goal and up to four explicit, workspace-relative UTF-8 files (one per line, maximum 16 KiB each). Saving stores the goal and file snapshots in the local SQLite database; it makes no model request. Later, **Compare and ask Muse** reads the selected files again, detects missing or changed files using SHA-256, compares against the original snapshot and last review, runs syntax checks on Python and JSON without executing them, and sends the goal and selected contents to Meta for a proposed next step. The prior model analysis is included as fallible context. Returned quotations are checked against the current file contents. A valid quote does not prove the associated conclusion is correct. Each comparison makes one real Meta request and may incur charges.
 
 Access is limited to the configured root and explicit paths. Hidden or credential-named paths and common credential patterns are rejected; the detector is **not exhaustive**. Select only content you are comfortable storing locally and sharing with Meta. A second read rejects detected changes during analysis, but files are not locked and this is not an atomic snapshot or a security boundary against a hostile local process. Syntax checks do not run the code or establish functional correctness. The assistant does not edit files or execute proposed commands.
+
+One [recorded real review](docs/evidence/work-continuity-real.json) used two public project files, detected a specification change, passed a Python syntax check and returned three checked quotations. Muse suggested adding a test; the selected context did not include the existing test suite, so a human must verify whether the recommendation is already covered. One run establishes no general accuracy claim.
 
 ## Second Life: follow a memory across a changed world
 

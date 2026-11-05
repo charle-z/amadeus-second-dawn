@@ -1,0 +1,75 @@
+{
+  "description": "One real Muse file-continuity review using public project files. Recommendations require human review.",
+  "code_commit": "f821c86a022278305ff31f3b090b460ef1215831",
+  "task": {
+    "id": 1,
+    "goal": "Review whether the practical continuity feature has clear scope and identify the next concrete action.",
+    "paths": [
+      "docs/spec.md",
+      "amadeus/work_checks.py"
+    ],
+    "created_at": "2026-11-05T00:56:06.230726+00:00",
+    "last_result": {
+      "task_id": 1,
+      "changes": [
+        {
+          "path": "docs/spec.md",
+          "status": "changed",
+          "before_sha256": "eaf2845049d5375897234689d90f2a6a7a9bf0aa05484122efbfc378d7046ff7",
+          "after_sha256": "c596f05bf5b15276371f8c80ddf0b970fc99e3088847b2d7beb17106136918c3",
+          "since_last_status": "not_compared",
+          "diff": "--- saved/docs/spec.md\n+++ current/docs/spec.md\n@@ -23,3 +23,5 @@\n ## Practical continuity slice\r\n \r\n A user can preserve an explicit work objective and selected text files from a configured workspace, restart the process, inspect actual file changes and request a Muse assessment with source quotations checked by the backend. This is a read-only continuity assistant, not autonomous execution. Explicitly disclose that selected content is stored locally and transmitted to Meta; restrict paths, file types and sizes, reject likely credentials, and explain that secret detection is not exhaustive.\r\n+\r\n+On each review, run Python and JSON syntax checks without executing selected files, preserve the previous model analysis as fallible context, and validate that cited quotations appear in the files read. Syntax checks and quotation matching do not prove a recommendation correct.\r\n"
+        },
+        {
+          "path": "amadeus/work_checks.py",
+          "status": "unchanged",
+          "before_sha256": "1d9af6a2aa72557ce81e877d2ef2310bf26fb147aeacc083d0cfdc33010b8c84",
+          "after_sha256": "1d9af6a2aa72557ce81e877d2ef2310bf26fb147aeacc083d0cfdc33010b8c84",
+          "since_last_status": "not_compared",
+          "diff": ""
+        }
+      ],
+      "analysis": {
+        "findings": [
+          {
+            "assessment": "Scope is explicitly bounded as read-only assistance, which prevents autonomous-execution expectations.",
+            "path": "docs/spec.md",
+            "quote": "This is a read-only continuity assistant, not autonomous execution."
+          },
+          {
+            "assessment": "Scope includes explicit non-execution syntax validation and fallible-context handling with limits disclosed.",
+            "path": "docs/spec.md",
+            "quote": "On each review, run Python and JSON syntax checks without executing selected files, preserve the previous model analysis as fallible context"
+          },
+          {
+            "assessment": "Implementation matches the read-only scope by using compile-only checks and JSON parsing rather than execution.",
+            "path": "amadeus/work_checks.py",
+            "quote": "\"\"\"Read-only, deterministic syntax checks; these never execute selected code.\"\"\""
+          }
+        ],
+        "next_step": "Add a bounded test that verifies quotation validation rejects a fabricated quote while accepting an exact file substring.",
+        "summary": "Practical continuity scope is clear: preserve objective plus selected files across restart, inspect diffs, run non-executing syntax checks, and validate quoted evidence with disclosed privacy and secret-detection limits."
+      },
+      "previous_analysis": null,
+      "diagnostics": [
+        {
+          "path": "amadeus/work_checks.py",
+          "check": "python-syntax",
+          "status": "pass"
+        }
+      ],
+      "model": "muse-spark-1.3",
+      "usage": {
+        "prompt_tokens": 1513,
+        "completion_tokens": 449,
+        "total_tokens": 1962,
+        "completion_tokens_details": {
+          "reasoning_tokens": 210
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    }
+  }
+}
