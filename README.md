@@ -47,7 +47,7 @@ Enter a goal and up to four explicit, workspace-relative UTF-8 files (one per li
 
 Access is limited to the configured root and explicit paths. Hidden or credential-named paths and common credential patterns are rejected; the detector is **not exhaustive**. Select only content you are comfortable storing locally and sharing with Meta. A second read rejects detected changes during analysis, but files are not locked and this is not an atomic snapshot or a security boundary against a hostile local process. Syntax checks do not run the code or establish functional correctness. The assistant does not edit files or execute proposed commands.
 
-One [recorded real review](docs/evidence/work-continuity-real.json) used two public project files, detected a specification change, passed a Python syntax check and returned three checked quotations. Muse suggested adding a test; the selected context did not include the existing test suite, so a human must verify whether the recommendation is already covered. One run establishes no general accuracy claim.
+One [recorded real review](docs/evidence/work-continuity-real.json) used two public project files, detected a specification change, passed a Python syntax check and returned three checked quotations. Muse suggested adding a test; the selected context did not include the existing test suite, so a human must verify whether the recommendation is already covered. After restarting the server, the task and its three findings were recovered without another model call. One run establishes no general accuracy claim.
 
 ## Second Life: follow a memory across a changed world
 

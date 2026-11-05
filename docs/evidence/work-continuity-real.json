@@ -71,5 +71,13 @@
         }
       }
     }
+  },
+  "restart_verification": {
+    "observed_at": "2026-11-05T01:03:13.161563+00:00",
+    "method": "Restarted local server and read /api/state with the same configured workspace",
+    "restored_task_id": 1,
+    "restored_model": "muse-spark-1.3",
+    "restored_findings": 3,
+    "additional_model_calls": 0
   }
 }
