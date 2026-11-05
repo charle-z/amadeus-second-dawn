@@ -136,6 +136,10 @@ class Handler(BaseHTTPRequestHandler):
                 from .work import WorkManager
                 task_id = integer(data['task_id'], 1, 2**53 - 1)
                 return WorkManager(exp.db, self.server.work_root).inspect(task_id)
+            if self.path == '/api/work/handoff' and set(data) == {'task_id'}:
+                from .work import WorkManager
+                task_id = integer(data['task_id'], 1, 2**53 - 1)
+                return WorkManager(exp.db, self.server.work_root).handoff(task_id)
             if self.path == '/api/work/checkpoint' and set(data) == {'task_id', 'completed', 'attempted', 'next_step'}:
                 from .work import WorkManager
                 task_id = integer(data['task_id'], 1, 2**53 - 1)

@@ -29,3 +29,5 @@ On each review, run Python and JSON syntax checks without executing selected fil
 Allow a local-only check of selected files and syntax without an API key or model call. Compare the current file hashes with those used for the latest recorded review, and report the time and limitations of the check without implying that an unchanged review is correct.
 
 Allow optional progress notes on completed work, attempts and next steps to persist with the objective. Include saved notes in explicit model reviews, reject a review if the notes change during analysis, and report note changes alongside file changes in local checks.
+
+Generate a local, previewable handoff from the saved objective and notes, current file state, syntax diagnostics and the latest review. Check each review quotation against its current file and distinguish missing evidence from a quotation present in a changed or unchanged file. Do not claim this proves an assessment correct. Exclude full files and diffs; explain that notes, analysis and quotations may still be sensitive. The operation must not call a model.

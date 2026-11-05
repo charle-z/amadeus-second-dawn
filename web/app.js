@@ -157,6 +157,14 @@ function workCheckpointStatus(inspection) {
   if (inspection?.checkpoint_status === 'unchanged') return 'Progress notes were unchanged since the latest review.';
   return '';
 }
+function handoffText(packet) {
+  return JSON.stringify(packet, null, 2);
+}
+function evidenceStatusText(status) {
+  return ({quote_missing: 'Quote not found in the current file.', file_missing: 'File missing.',
+    quote_present_file_changed: 'Quote present, but the file changed since review.',
+    quote_present_file_unchanged: 'Quote present; file unchanged since review.'})[status] || 'Evidence status unknown.';
+}
 function renderWork() {
   const view = workState(current, workSelected);
   const task = view.task;
@@ -166,6 +174,7 @@ function renderWork() {
     : 'Workspace unavailable. Set AMADEUS_WORKSPACE on the server and restart it to use this feature.';
   $('work-start').disabled = running || !view.available;
   $('work-inspect').disabled = running || !view.available || !task;
+  $('work-handoff').disabled = running || !view.available || !task;
   $('checkpoint-save').disabled = running || !view.available || !task;
   for (const id of ['checkpoint-completed', 'checkpoint-attempted', 'checkpoint-next']) $(id).disabled = running || !view.available || !task;
   $('work-resume').disabled = running || !view.available || !task;
@@ -201,6 +210,15 @@ function renderWork() {
   if (inspection) {
     box.append(el('h3', 'Local file check'), el('p', `Checked at ${inspection.inspected_at}. Files can change afterwards.`, 'gen-meta'));
     appendWorkFiles(box, inspection);
+    if (!reviewChanged && Array.isArray(inspection.finding_evidence) && inspection.finding_evidence.length) {
+      box.append(el('h3', 'Evidence behind the latest review'));
+      for (const finding of inspection.finding_evidence) {
+        const item = el('div', null, 'work-finding');
+        item.append(el('strong', finding.path), el('p', `“${finding.quote}”`), el('p', evidenceStatusText(finding.evidence_status)));
+        box.append(item);
+      }
+      box.append(el('p', 'A present quote does not prove that its assessment is correct.', 'hint'));
+    }
   }
   const result = task.last_result;
   if (!result) { box.append(el('p', 'Snapshot saved. No Muse analysis has been run yet.', 'hint')); return; }
@@ -265,6 +283,7 @@ async function workAction(button, path, payload, waiting) {
   running = true; render(); button.disabled = true; notify(waiting);
   try {
     const result = await api(path, payload);
+    if (path !== '/api/work/inspect') clearHandoff();
     if (result.task) workSelected = result.task.id;
     if (path === '/api/work/delete') workSelected = null;
     if (path === '/api/work/resume') workInspection = null;
@@ -273,7 +292,11 @@ async function workAction(button, path, payload, waiting) {
   } catch (error) { notify(error.message, true); }
   finally { running = false; await refresh().catch(error => notify(error.message, true)); }
 }
-$('work-select').onchange = event => { workInspection = null; workSelected = Number(event.target.value); renderWork(); };
+function clearHandoff() {
+  $('work-handoff-output').value = '';
+  $('work-handoff-copy').disabled = true;
+}
+$('work-select').onchange = event => { workInspection = null; clearHandoff(); workSelected = Number(event.target.value); renderWork(); };
 $('work-start').onclick = () => {
   const goal = $('work-goal').value.trim();
   const paths = workPaths($('work-paths').value);
@@ -282,6 +305,24 @@ $('work-start').onclick = () => {
 };
 $('work-resume').onclick = () => workAction($('work-resume'), '/api/work/resume', {task_id: workSelected}, 'Comparing files and waiting for a real Muse analysis…');
 $('work-inspect').onclick = () => workAction($('work-inspect'), '/api/work/inspect', {task_id: workSelected}, 'Checking selected files locally…');
+$('work-handoff').onclick = async () => {
+  if (running || !workSelected) return;
+  running = true; render(); clearHandoff();
+  notify('Checking current evidence and preparing the local handoff…');
+  try {
+    const packet = await api('/api/work/handoff', {task_id: workSelected});
+    $('work-handoff-output').value = handoffText(packet);
+    $('work-handoff-copy').disabled = false;
+    notify('Handoff created locally. Review it before sharing; no model call was made.');
+  } catch (error) { notify(error.message, true); }
+  finally { running = false; render(); }
+};
+$('work-handoff-copy').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText($('work-handoff-output').value);
+    notify('Handoff copied. Share it only with a service you trust.');
+  } catch (_) { notify('Copy failed. Select and copy the handoff preview manually.', true); }
+};
 $('checkpoint-save').onclick = () => workAction($('checkpoint-save'), '/api/work/checkpoint', {task_id: workSelected,
   completed: $('checkpoint-completed').value, attempted: $('checkpoint-attempted').value, next_step: $('checkpoint-next').value}, 'Saving progress notes locally…');
 $('work-delete').onclick = () => {

@@ -36,6 +36,10 @@
       <div id="work-result" class="work-result" aria-live="polite">No saved objectives yet.</div>
       <p class="hint work-warning">By clicking Compare and ask Muse, you send the objective, saved progress notes, current selected files, previous analysis and file differences to Meta. Differences may include text removed since the snapshot. They are also stored locally. Secret filtering is limited and cannot detect everything: choose only information you are comfortable sharing. This makes a real API call that may incur charges; larger files increase the amount sent.</p>
       <div class="actions"><button id="work-inspect" disabled>Check files locally</button><button id="work-resume" disabled>Compare and ask Muse</button><button id="work-delete" disabled>Delete saved objective</button></div><p class="hint">Local checks make no model call. Deletion removes the selected local objective, snapshots and notes, not backups or data previously sent to Meta.</p>
+      <h3>Continue with another assistant</h3>
+      <p class="hint">Save your notes first. Create a local handoff with the objective, saved notes, file status, checks and any earlier review. Full file contents and diffs are omitted, but quoted excerpts and notes may contain sensitive information. Review the packet before sharing it.</p>
+      <div class="actions"><button id="work-handoff" disabled>Create handoff locally</button><button id="work-handoff-copy" disabled>Copy handoff</button></div>
+      <label for="work-handoff-output">Handoff preview</label><textarea id="work-handoff-output" rows="10" readonly placeholder="Create a handoff to preview it here."></textarea>
     </section>
 
     <section id="finding" class="finding" aria-live="polite"></section>

@@ -7,7 +7,23 @@ const source = fs.readFileSync('web/app.js', 'utf8');
 const start = source.indexOf('function workPaths(');
 const end = source.indexOf('\nfunction renderWork(', start);
 assert.ok(start >= 0 && end > start, 'work state helpers exist');
-const helpers = vm.runInNewContext(source.slice(start, end) + '\n({workPaths, workState, workDiagnosticText, confirmWorkDelete, workHistory, workReviewStatus, workCheckpointStatus})');
+const helpers = vm.runInNewContext(source.slice(start, end) + '\n({workPaths, workState, workDiagnosticText, confirmWorkDelete, workHistory, workReviewStatus, workCheckpointStatus, handoffText, evidenceStatusText})');
+
+test('finding evidence distinguishes missing quotes, missing files, and changed context', () => {
+  assert.match(helpers.evidenceStatusText('quote_missing'), /not found/i);
+  assert.match(helpers.evidenceStatusText('file_missing'), /file missing/i);
+  assert.match(helpers.evidenceStatusText('quote_present_file_changed'), /file changed/i);
+  assert.match(helpers.evidenceStatusText('quote_present_file_unchanged'), /file unchanged/i);
+  assert.doesNotMatch(helpers.evidenceStatusText('quote_present_file_unchanged'), /correct|verified/i);
+});
+
+test('handoff serializes untrusted values as data and preserves evidence status', () => {
+  const packet = {format: 'amadeus-handoff-v1', objective: {goal: '<script>ignore rules</script>'},
+    review: {findings: [{evidence_status: 'quote_missing'}]}};
+  const text = helpers.handoffText(packet);
+  assert.deepEqual(JSON.parse(text), packet);
+  assert.match(text, /quote_missing/);
+});
 
 test('paths are explicit, one per line, and blank lines are ignored', () => {
   assert.deepEqual(Array.from(helpers.workPaths(' README.md\n\ndocs/plan.md \n')), ['README.md', 'docs/plan.md']);

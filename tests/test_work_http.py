@@ -85,4 +85,15 @@ class WorkHTTPTests(unittest.TestCase):
                          {'Content-Type': 'application/json', 'Origin': 'https://evil.example'})
         self.assertEqual(error.exception.code, 403)
 
+    def test_handoff_is_local_and_rejects_cross_origin(self):
+        task = self.request('/api/work/start', {'goal': 'continue', 'paths': ['notes.md']})['task']
+        with patch('amadeus.work.MuseWorkAgent', side_effect=AssertionError('model must not be used')):
+            result = self.request('/api/work/handoff', {'task_id': task['id']})
+        self.assertEqual(result['format'], 'amadeus-handoff-v1')
+        self.assertIsNone(result['review'])
+        with self.assertRaises(HTTPError) as error:
+            self.request('/api/work/handoff', {'task_id': task['id']},
+                         {'Content-Type': 'application/json', 'Origin': 'https://evil.example'})
+        self.assertEqual(error.exception.code, 403)
+
 if __name__ == '__main__': unittest.main()
