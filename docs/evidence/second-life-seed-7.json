@@ -1,0 +1,309 @@
+{
+  "description": "Real Meta Muse Second Life run; one observation, not a benchmark.",
+  "model": "muse-spark-1.3",
+  "code_commit": "cf9ada25034b8bfa1bfb2ba71c8562a863e5d17b",
+  "parent_generation": {
+    "id": 2,
+    "world_version": "v1",
+    "seed": 7,
+    "status": "won",
+    "parent_id": 1,
+    "created_at": "2026-11-04T21:43:12.098828+00:00",
+    "observation": {
+      "world_version": "v1",
+      "seed": 7,
+      "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+      "actions": [
+        "left",
+        "right"
+      ],
+      "goal": "Reach the exit alive."
+    },
+    "events": [
+      {
+        "id": 4,
+        "generation_id": 2,
+        "kind": "birth",
+        "data": {
+          "world_version": "v1",
+          "seed": 7,
+          "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+          "actions": [
+            "left",
+            "right"
+          ],
+          "goal": "Reach the exit alive."
+        },
+        "created_at": "2026-11-04T21:43:12.099461+00:00"
+      },
+      {
+        "id": 5,
+        "generation_id": 2,
+        "kind": "decision",
+        "data": {
+          "action": "right",
+          "rationale": "Past memory in same world shows left led to dead, so right is supported by evidence as the safer choice."
+        },
+        "created_at": "2026-11-04T21:45:28.017896+00:00"
+      },
+      {
+        "id": 6,
+        "generation_id": 2,
+        "kind": "won",
+        "data": {
+          "observation": {
+            "world_version": "v1",
+            "seed": 7,
+            "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+            "actions": [
+              "left",
+              "right"
+            ],
+            "goal": "Reach the exit alive."
+          },
+          "action": "right",
+          "result": "won",
+          "evaluator": "deterministic gate rule"
+        },
+        "created_at": "2026-11-04T21:45:28.018008+00:00"
+      }
+    ]
+  },
+  "child_generation": {
+    "id": 4,
+    "world_version": "v2",
+    "seed": 7,
+    "status": "dead",
+    "parent_id": 2,
+    "created_at": "2026-11-05T00:41:25.471420+00:00",
+    "observation": {
+      "world_version": "v2",
+      "seed": 7,
+      "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+      "actions": [
+        "left",
+        "right"
+      ],
+      "goal": "Reach the exit alive."
+    },
+    "events": [
+      {
+        "id": 10,
+        "generation_id": 4,
+        "kind": "birth",
+        "data": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+          "actions": [
+            "left",
+            "right"
+          ],
+          "goal": "Reach the exit alive."
+        },
+        "created_at": "2026-11-05T00:41:25.472106+00:00"
+      },
+      {
+        "id": 11,
+        "generation_id": 4,
+        "kind": "verified_trial",
+        "data": {
+          "strategy": "VERIFIED_MEMORY",
+          "scenario": "shifted",
+          "world_version": "v2",
+          "seed": 7,
+          "inspection_mode": "matched",
+          "observation": {
+            "world_version": "v2",
+            "seed": 7,
+            "scene": "Two gates block the exit. One is fatal. The world may have changed since previous generations.",
+            "glyph": "violet",
+            "goal": "Reach the exit alive",
+            "actions": [
+              "left",
+              "right",
+              "inspect"
+            ],
+            "inspection_note": "An inspection costs one unit and gives an imperfect hint. It can be wrong."
+          },
+          "training_memory_ids": [
+            2
+          ],
+          "inspection": {
+            "id": "inspection-1",
+            "hint": "right",
+            "cost": 1,
+            "reliability": "imperfect; can be wrong"
+          },
+          "assessment": {
+            "evidence_id": "inspection-1",
+            "memory_id": 2,
+            "rationale": "Memory 2 is from world_version v1 while current is v2 with explicit warning world may have changed, so prior win on right may not transfer. Inspection-1 hints right which matches memory, but inspection is stated imperfect and can be wrong, so insufficient to verify applicability.",
+            "verdict": "uncertain"
+          },
+          "action": "right",
+          "rationale": "No verified memory available and no further inspection possible; following the sole imperfect hint as best available evidence under uncertainty.",
+          "outcome": "dead",
+          "cost": 1,
+          "model_calls": [
+            {
+              "stage": "assess",
+              "response": {
+                "evidence_id": "inspection-1",
+                "memory_id": 2,
+                "rationale": "Memory 2 is from world_version v1 while current is v2 with explicit warning world may have changed, so prior win on right may not transfer. Inspection-1 hints right which matches memory, but inspection is stated imperfect and can be wrong, so insufficient to verify applicability.",
+                "verdict": "uncertain"
+              },
+              "usage": {
+                "prompt_tokens": 340,
+                "completion_tokens": 396,
+                "total_tokens": 736,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 302
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              }
+            },
+            {
+              "stage": "act",
+              "response": {
+                "action": "right",
+                "rationale": "No verified memory available and no further inspection possible; following the sole imperfect hint as best available evidence under uncertainty."
+              },
+              "usage": {
+                "prompt_tokens": 210,
+                "completion_tokens": 251,
+                "total_tokens": 461,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 208
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              }
+            }
+          ],
+          "evidence": {
+            "action": "right",
+            "outcome": "dead",
+            "evaluator": "deterministic gate rule"
+          }
+        },
+        "created_at": "2026-11-05T00:44:07.719489+00:00"
+      },
+      {
+        "id": 12,
+        "generation_id": 4,
+        "kind": "decision",
+        "data": {
+          "action": "right",
+          "rationale": "No verified memory available and no further inspection possible; following the sole imperfect hint as best available evidence under uncertainty."
+        },
+        "created_at": "2026-11-05T00:44:07.720259+00:00"
+      },
+      {
+        "id": 13,
+        "generation_id": 4,
+        "kind": "dead",
+        "data": {
+          "observation": {
+            "world_version": "v2",
+            "seed": 7,
+            "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+            "actions": [
+              "left",
+              "right"
+            ],
+            "goal": "Reach the exit alive."
+          },
+          "action": "right",
+          "result": "dead",
+          "evaluator": "deterministic gate rule",
+          "source_memory_ids": [
+            2
+          ],
+          "assessment": {
+            "evidence_id": "inspection-1",
+            "memory_id": 2,
+            "rationale": "Memory 2 is from world_version v1 while current is v2 with explicit warning world may have changed, so prior win on right may not transfer. Inspection-1 hints right which matches memory, but inspection is stated imperfect and can be wrong, so insufficient to verify applicability.",
+            "verdict": "uncertain"
+          },
+          "inspection": {
+            "id": "inspection-1",
+            "hint": "right",
+            "cost": 1,
+            "reliability": "imperfect; can be wrong"
+          }
+        },
+        "created_at": "2026-11-05T00:44:07.720309+00:00"
+      }
+    ]
+  },
+  "memories": [
+    {
+      "id": 2,
+      "generation_id": 2,
+      "world_version": "v1",
+      "seed": 7,
+      "action": "right",
+      "outcome": "won",
+      "evidence": {
+        "observation": {
+          "world_version": "v1",
+          "seed": 7,
+          "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+          "actions": [
+            "left",
+            "right"
+          ],
+          "goal": "Reach the exit alive."
+        },
+        "action": "right",
+        "result": "won",
+        "evaluator": "deterministic gate rule"
+      },
+      "created_at": "2026-11-04T21:45:28.018023+00:00"
+    },
+    {
+      "id": 4,
+      "generation_id": 4,
+      "world_version": "v2",
+      "seed": 7,
+      "action": "right",
+      "outcome": "dead",
+      "evidence": {
+        "observation": {
+          "world_version": "v2",
+          "seed": 7,
+          "scene": "Two gates block the exit. One leads to safety; the other is fatal.",
+          "actions": [
+            "left",
+            "right"
+          ],
+          "goal": "Reach the exit alive."
+        },
+        "action": "right",
+        "result": "dead",
+        "evaluator": "deterministic gate rule",
+        "source_memory_ids": [
+          2
+        ],
+        "assessment": {
+          "evidence_id": "inspection-1",
+          "memory_id": 2,
+          "rationale": "Memory 2 is from world_version v1 while current is v2 with explicit warning world may have changed, so prior win on right may not transfer. Inspection-1 hints right which matches memory, but inspection is stated imperfect and can be wrong, so insufficient to verify applicability.",
+          "verdict": "uncertain"
+        },
+        "inspection": {
+          "id": "inspection-1",
+          "hint": "right",
+          "cost": 1,
+          "reliability": "imperfect; can be wrong"
+        }
+      },
+      "created_at": "2026-11-05T00:44:07.720325+00:00"
+    }
+  ]
+}

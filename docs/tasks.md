@@ -12,4 +12,4 @@
 - [x] Publish the experiment and planning changes.
 - [ ] Finish the official submission after user sign-in.
 
-- [x] Verify the Second Life transition, verified decision and durable evidence with test doubles; no new real calls were made for this feature.
+- [x] Verify the Second Life transition with test doubles and preserve one separate real two-call Muse trace.

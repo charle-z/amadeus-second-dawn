@@ -38,6 +38,8 @@ On macOS or Linux, set the same variable in the shell without saving it to a tra
 
 Select a completed `v1` generation with a recorded memory. Under **Second life**, choose **Continue in changed world** to create a `v2` child with the same seed and a link to its parent; this action makes no model call. Then select **Ask Muse to verify and decide**: the backend asks Muse to assess the parent memory against a fallible inspection, then choose an action. This makes up to two real Meta requests. The backend independently evaluates the action and stores the assessment, source memory, inspection and outcome. A failure does not fabricate an outcome. Existing generations and historical traces are preserved.
 
+A [real Second Life run](docs/evidence/second-life-seed-7.json) continued a recorded v1 success into v2 with seed 7: Muse judged the parent memory uncertain, chose right, and the independent evaluator recorded death. The two calls reported 550 input and 647 completion tokens. This is one observation, not a performance claim.
+
 The signal can be wrong, and an uncertain or inapplicable assessment withholds the memory before the action. World versions are visible. This is a controlled gate experiment, not evidence that an agent can resume arbitrary real-world work or that verified memory is generally superior. Automated tests use test doubles; do not call them real Muse runs.
 
 ## What is evaluated
