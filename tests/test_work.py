@@ -89,6 +89,23 @@ class WorkTests(unittest.TestCase):
         self.assertEqual(manager.list_tasks(), [])
         with self.assertRaises(ValueError): manager.resume(task['id'], lambda _: None)
 
+    def test_delete_removes_one_task_and_survives_reopen(self):
+        first = self.work.start('first', ['notes.md'])['task']
+        second = self.work.start('second', ['notes.md'])['task']
+        self.work.resume(first['id'], lambda _: {'summary':'x', 'findings':[], 'next_step':'review'})
+        self.assertEqual(self.work.delete(first['id']), {'task_id': first['id'], 'deleted': True})
+        self.e.close(); self.e = Experiment(self.db); self.work = WorkManager(self.e.db, self.root)
+        self.assertEqual([x['id'] for x in self.work.list_tasks()], [second['id']])
+        with self.assertRaises(ValueError): self.work.delete(first['id'])
+
+    def test_delete_rejects_other_workspace_and_bad_ids(self):
+        task = self.work.start('goal', ['notes.md'])['task']
+        other = Path(self.tmp.name) / 'other-delete'; other.mkdir()
+        stranger = WorkManager(self.e.db, other)
+        for task_id in (True, -1, '1', task['id']):
+            with self.subTest(task_id=task_id), self.assertRaises(ValueError): stranger.delete(task_id)
+        self.assertEqual(self.work.list_tasks()[0]['id'], task['id'])
+
     def test_missing_workspace_is_disabled(self):
         with self.assertRaises(ValueError): WorkManager(self.e.db, None).start('goal', ['notes.md'])
 

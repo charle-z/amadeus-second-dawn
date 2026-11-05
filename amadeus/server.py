@@ -132,6 +132,15 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/api/work/start' and set(data) == {'goal', 'paths'}:
                 from .work import WorkManager
                 return WorkManager(exp.db, self.server.work_root).start(data['goal'], data['paths'])
+            if self.path == '/api/work/delete' and set(data) == {'task_id'}:
+                task_id = integer(data['task_id'], 1, 2**53 - 1)
+                if not self.server.busy.acquire(blocking=False):
+                    raise ValueError('Another model run is in progress')
+                try:
+                    from .work import WorkManager
+                    return WorkManager(exp.db, self.server.work_root).delete(task_id)
+                finally:
+                    self.server.busy.release()
             if self.path == '/api/work/resume' and set(data) == {'task_id'}:
                 task_id = integer(data['task_id'], 1, 2**53 - 1)
                 if not self.server.busy.acquire(blocking=False):

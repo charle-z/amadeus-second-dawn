@@ -7,7 +7,7 @@ const source = fs.readFileSync('web/app.js', 'utf8');
 const start = source.indexOf('function workPaths(');
 const end = source.indexOf('\nfunction renderWork(', start);
 assert.ok(start >= 0 && end > start, 'work state helpers exist');
-const helpers = vm.runInNewContext(source.slice(start, end) + '\n({workPaths, workState, workDiagnosticText})');
+const helpers = vm.runInNewContext(source.slice(start, end) + '\n({workPaths, workState, workDiagnosticText, confirmWorkDelete})');
 
 test('paths are explicit, one per line, and blank lines are ignored', () => {
   assert.deepEqual(Array.from(helpers.workPaths(' README.md\n\ndocs/plan.md \n')), ['README.md', 'docs/plan.md']);
@@ -25,4 +25,14 @@ test('task selection survives reload and never invents an analysis', () => {
 test('syntax diagnostics show the actual check, status and position without claiming correctness', () => {
   assert.equal(helpers.workDiagnosticText({path: 'app.py', check: 'python_syntax', status: 'error', line: 7, column: 2}), 'app.py · python_syntax · error · line 7, column 2');
   assert.equal(helpers.workDiagnosticText({path: 'data.json', check: 'json_syntax', status: 'ok'}), 'data.json · json_syntax · ok');
+});
+
+
+test('deleting a task requires explicit confirmation and explains limits', () => {
+  let prompt = '';
+  assert.equal(helpers.confirmWorkDelete(message => { prompt = message; return false; }), false);
+  assert.match(prompt, /snapshot/i);
+  assert.match(prompt, /backup/i);
+  assert.match(prompt, /Meta/i);
+  assert.equal(helpers.confirmWorkDelete(() => true), true);
 });

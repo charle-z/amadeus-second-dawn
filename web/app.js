@@ -134,6 +134,9 @@ function workDiagnosticText(item) {
   }
   return text;
 }
+function confirmWorkDelete(confirmDialog) {
+  return confirmDialog('Delete this saved objective, its snapshots and its local analysis? This cannot erase backups, filesystem copies, public evidence, or data already sent to Meta.');
+}
 function renderWork() {
   const view = workState(current, workSelected);
   const task = view.task;
@@ -143,6 +146,7 @@ function renderWork() {
     : 'Workspace unavailable. Set AMADEUS_WORKSPACE on the server and restart it to use this feature.';
   $('work-start').disabled = running || !view.available;
   $('work-resume').disabled = running || !view.available || !task;
+  $('work-delete').disabled = running || !view.available || !task;
   $('work-select').disabled = running || !view.tasks.length;
   const selector = $('work-select'); selector.replaceChildren();
   if (!view.tasks.length) selector.append(el('option', 'No saved objectives'));
@@ -198,7 +202,8 @@ async function workAction(button, path, payload, waiting) {
   try {
     const result = await api(path, payload);
     if (result.task) workSelected = result.task.id;
-    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : 'Muse analysis saved. Check the evidence before acting.');
+    if (path === '/api/work/delete') workSelected = null;
+    notify(path === '/api/work/start' ? 'Objective and file snapshot saved. No model call was made.' : path === '/api/work/delete' ? 'Local objective and snapshots deleted.' : 'Muse analysis saved. Check the evidence before acting.');
   } catch (error) { notify(error.message, true); }
   finally { running = false; await refresh().catch(error => notify(error.message, true)); }
 }
@@ -210,6 +215,10 @@ $('work-start').onclick = () => {
   workAction($('work-start'), '/api/work/start', {goal, paths}, 'Saving the objective and selected file snapshots…');
 };
 $('work-resume').onclick = () => workAction($('work-resume'), '/api/work/resume', {task_id: workSelected}, 'Comparing files and waiting for a real Muse analysis…');
+$('work-delete').onclick = () => {
+  if (running || !workSelected || !confirmWorkDelete(message => window.confirm(message))) return;
+  workAction($('work-delete'), '/api/work/delete', {task_id: workSelected}, 'Deleting the selected local objective…');
+};
 
 function renderFinding() {
   const box = $('finding');

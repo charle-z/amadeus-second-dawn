@@ -113,6 +113,18 @@ class WorkManager:
         return [{'id': row['id'], 'goal': row['goal'], 'paths': json.loads(row['paths']), 'created_at': row['created_at'],
                  'last_result': json.loads(row['last_result']) if row['last_result'] else None} for row in rows]
 
+    def delete(self, task_id):
+        """Delete one task in the configured workspace, not external copies."""
+        if type(task_id) is not int or not 1 <= task_id <= 2**53 - 1:
+            raise ValueError('Invalid task id')
+        root_hash = self._root_hash()
+        self.db.execute('PRAGMA secure_delete=ON')
+        with self.db:
+            changed = self.db.execute('DELETE FROM work_tasks WHERE id=? AND root_hash=?', (task_id, root_hash))
+            if changed.rowcount != 1:
+                raise ValueError('Task not found in this workspace')
+        return {'task_id': task_id, 'deleted': True}
+
     def resume(self, task_id, decide):
         if type(task_id) is not int or task_id < 1:
             raise ValueError('Invalid task id')

@@ -30,6 +30,29 @@ class WorkHTTPTests(unittest.TestCase):
         self.assertEqual(result['changes'][0]['status'],'changed')
         state=self.request('/api/state'); self.assertTrue(state['work_available'])
         self.assertEqual(state['work_tasks'][0]['last_result'],result)
+    def test_delete_requires_same_origin_and_respects_busy_gate(self):
+        generation=self.request('/api/start', {'version':'v1','seed':7})['generation']
+        with patch('amadeus.server.MuseAgent', return_value=lambda obs, memories: {'action':'left','rationale':'test only'}):
+            self.request('/api/step', {'generation_id':generation['id']})
+        before=self.request('/api/state')
+        task=self.request('/api/work/start', {'goal':'inspect','paths':['notes.md']})['task']
+        with self.assertRaises(HTTPError) as error:
+            self.request('/api/work/delete', {'task_id':task['id']}, {'Content-Type':'application/json','Origin':'https://evil.example'})
+        self.assertEqual(error.exception.code,403)
+        self.server.busy.acquire()
+        try:
+            with self.assertRaises(HTTPError) as error:
+                self.request('/api/work/delete', {'task_id':task['id']})
+            self.assertEqual(error.exception.code,400)
+            self.assertEqual(len(self.request('/api/state')['work_tasks']),1)
+        finally: self.server.busy.release()
+        result=self.request('/api/work/delete', {'task_id':task['id']})
+        self.assertEqual(result, {'task_id':task['id'],'deleted':True})
+        after=self.request('/api/state')
+        self.assertEqual(after['work_tasks'],[])
+        self.assertEqual(after['generations'], before['generations'])
+        self.assertEqual(after['memories'], before['memories'])
+
     def test_work_rejects_cross_origin_and_traversal(self):
         with self.assertRaises(HTTPError) as e:
             self.request('/api/work/start', {'goal':'inspect','paths':['../x.md']})
