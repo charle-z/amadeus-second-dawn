@@ -1,12 +1,8 @@
-# Plan
+# Implementation boundaries
 
-1. Verify a real, authenticated Muse call. Build and test the smallest model → action → deterministic consequence → persistent memory → death → reproducible restart slice.
-2. Add contrasting world versions and three memory policies. Verify evidence checks and matched comparison; test changing and invariant cases.
-3. Expose the running experiment and audit trail in a local visual interface. Test end to end with the real model and document results and limitations.
-4. Finish reproducible demo, documentation, tests, commits and publication. Stretch goals only after the central loop works.
-
-5. Extend the functioning MVP with matched inspection, consistent world versions and an independently reviewed exact planning preview; verify one bounded real Muse trial, tests and the local UI.
-
-6. Connect a recorded v1 life to a v2 child and explicitly requested verified Muse decision, preserving the existing interface, historical evidence and independent evaluator; validate errors, durable lineage, tests and presentation before publication.
-
-7. Add one practical, bounded continuity workflow for user-selected workspace files: durable objective and snapshots, deterministic change detection, model assessment with verified source quotations, explicit disclosure, and security tests.
+- Keep the backend responsible for deterministic world rules and independent outcome evaluation.
+- Persist attributed memories, generations and experiment evidence, including incomplete runs where possible.
+- Compare memory policies using reproducible worlds and disclose differences in information, calls and inspection cost.
+- Keep resource planning separate from process-local admission and do not represent reservations as operating-system quotas.
+- Support bounded, read-only continuity for explicitly selected workspace files, with deterministic checks and independently validated model citations.
+- Protect credentials, disclose transmission of selected files, and validate changes with automated tests.
