@@ -32,10 +32,10 @@
         <label>What was attempted or blocked?<textarea id="checkpoint-attempted" rows="2" maxlength="1000" disabled></textarea></label>
         <label>What should happen next?<textarea id="checkpoint-next" rows="2" maxlength="1000" disabled></textarea></label>
       </div>
-      <div class="actions"><button id="checkpoint-save" disabled>Save progress notes locally</button></div>
+      <div class="actions"><button id="checkpoint-save" disabled>Save progress notes locally</button></div><p class="hint">Changed notes are kept as local revisions until the objective is deleted.</p>
       <div id="work-result" class="work-result" aria-live="polite">No saved objectives yet.</div>
       <p class="hint work-warning">By clicking Compare and ask Muse, you send the objective, saved progress notes, current selected files, previous analysis and file differences to Meta. Differences may include text removed since the snapshot. They are also stored locally. Secret filtering is limited and cannot detect everything: choose only information you are comfortable sharing. This makes a real API call that may incur charges; larger files increase the amount sent.</p>
-      <div class="actions"><button id="work-inspect" disabled>Check files locally</button><button id="work-resume" disabled>Compare and ask Muse</button><button id="work-delete" disabled>Delete saved objective</button></div><p class="hint">Local checks make no model call. Deletion removes the selected local objective, snapshots and notes, not backups or data previously sent to Meta.</p>
+      <div class="actions"><button id="work-inspect" disabled>Check files locally</button><button id="work-resume" disabled>Compare and ask Muse</button><button id="work-delete" disabled>Delete saved objective</button></div><p class="hint">Local checks make no model call. Deletion removes the selected local objective, snapshots and all note revisions, not backups or data previously sent to Meta.</p>
       <h3>Continue with another assistant</h3>
       <p class="hint">Save your notes first. Create a local handoff with the objective, saved notes, file status, checks and any earlier review. Full file contents and diffs are omitted, but quoted excerpts and notes may contain sensitive information. Review the packet before sharing it.</p>
       <div class="actions"><button id="work-handoff" disabled>Create handoff locally</button><button id="work-handoff-copy" disabled>Copy handoff</button></div>

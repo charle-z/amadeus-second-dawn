@@ -30,4 +30,6 @@ Allow a local-only check of selected files and syntax without an API key or mode
 
 Allow optional progress notes on completed work, attempts and next steps to persist with the objective. Include saved notes in explicit model reviews, reject a review if the notes change during analysis, and report note changes alongside file changes in local checks.
 
+Keep changed progress notes as timestamped revisions in the local database and expose a bounded recent history. Do not create duplicates for unchanged notes. Migrate existing databases without fabricating earlier revisions; deleting an objective removes its local revision history.
+
 Generate a local, previewable handoff from the saved objective and notes, current file state, syntax diagnostics and the latest review. Check each review quotation against its current file and distinguish missing evidence from a quotation present in a changed or unchanged file. Do not claim this proves an assessment correct. Exclude full files and diffs; explain that notes, analysis and quotations may still be sensitive. The operation must not call a model.

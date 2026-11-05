@@ -137,7 +137,7 @@ function workDiagnosticText(item) {
   return text;
 }
 function confirmWorkDelete(confirmDialog) {
-  return confirmDialog('Delete this saved objective, its snapshots, progress notes and its local analysis? This cannot erase backups, filesystem copies, public evidence, or data already sent to Meta.');
+  return confirmDialog('Delete this saved objective, its snapshots, all versions of progress notes and its local analysis? This cannot erase backups, filesystem copies, public evidence, or data already sent to Meta.');
 }
 function workHistory(task) {
   const history = Array.isArray(task.review_history) ? task.review_history : [];
@@ -219,6 +219,19 @@ function renderWork() {
       }
       box.append(el('p', 'A present quote does not prove that its assessment is correct.', 'hint'));
     }
+  }
+  const priorNotes = Array.isArray(task.checkpoint_history) ? task.checkpoint_history.slice(1) : [];
+  if (priorNotes.length) {
+    box.append(el('h3', 'Earlier progress notes'));
+    for (const note of priorNotes) {
+      const panel = el('details', null, 'raw');
+      panel.append(el('summary', `Revision ${note.revision} · ${note.updated_at}`),
+        el('p', `Completed: ${note.completed || '—'}`),
+        el('p', `Attempted or blocked: ${note.attempted || '—'}`),
+        el('p', `Next step: ${note.next_step || '—'}`));
+      box.append(panel);
+    }
+    box.append(el('p', 'Up to ten recent note revisions are shown.', 'hint'));
   }
   const result = task.last_result;
   if (!result) { box.append(el('p', 'Snapshot saved. No Muse analysis has been run yet.', 'hint')); return; }

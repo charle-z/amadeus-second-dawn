@@ -10,6 +10,8 @@ The configured workspace bounds file access. A saved objective, selected snapsho
 
 A local handoff preview combines the saved objective and notes with freshly inspected file hashes, syntax diagnostics and the latest review. Its per-quotation status shows whether evidence is missing or still present and whether the file changed. A present quote does not validate the assessment. Full files and diffs are omitted, while notes, analysis and quotations can remain sensitive. Handoff creation makes no model call.
 
+Changed progress notes are retained as numbered, timestamped revisions; the interface shows up to ten. Older versions that predate this storage cannot be recovered. Deleting the objective cascades to local revisions. Only current notes are included in reviews and handoffs.
+
 Selected files and objectives are stored locally and sent to Meta when a model review is requested. Credential filtering is not exhaustive. File reads are not atomic snapshots against hostile concurrent writers; model recommendations require human review and are not executed automatically.
 
 ## Controlled experiment

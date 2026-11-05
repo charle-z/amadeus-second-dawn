@@ -64,6 +64,8 @@ class WorkManager:
             self.db.execute('CREATE TABLE IF NOT EXISTS work_tasks (id INTEGER PRIMARY KEY, goal TEXT NOT NULL, paths TEXT NOT NULL, snapshots TEXT NOT NULL, root_hash TEXT NOT NULL, created_at TEXT NOT NULL, last_result TEXT)')
             self.db.execute("CREATE TABLE IF NOT EXISTS work_reviews (id INTEGER PRIMARY KEY, task_id INTEGER NOT NULL REFERENCES work_tasks(id) ON DELETE CASCADE, recorded_at TEXT, origin TEXT NOT NULL CHECK(origin IN ('legacy', 'recorded')), result TEXT NOT NULL)")
             self.db.execute('CREATE TABLE IF NOT EXISTS work_checkpoints (task_id INTEGER PRIMARY KEY REFERENCES work_tasks(id) ON DELETE CASCADE, completed TEXT NOT NULL, attempted TEXT NOT NULL, next_step TEXT NOT NULL, revision INTEGER NOT NULL, updated_at TEXT NOT NULL)')
+            self.db.execute('CREATE TABLE IF NOT EXISTS work_checkpoint_history (task_id INTEGER NOT NULL REFERENCES work_tasks(id) ON DELETE CASCADE, revision INTEGER NOT NULL, completed TEXT NOT NULL, attempted TEXT NOT NULL, next_step TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(task_id, revision))')
+            self.db.execute('INSERT OR IGNORE INTO work_checkpoint_history(task_id, revision, completed, attempted, next_step, updated_at) SELECT task_id, revision, completed, attempted, next_step, updated_at FROM work_checkpoints')
             self.db.execute('CREATE INDEX IF NOT EXISTS work_reviews_task_id ON work_reviews(task_id, id DESC)')
             self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS work_reviews_one_legacy ON work_reviews(task_id) WHERE origin='legacy'")
             # Legacy databases retained only last_result. Backfill without inventing a timestamp.
@@ -143,8 +145,10 @@ class WorkManager:
         tasks = []
         for row in rows:
             reviews = self.db.execute('SELECT id, recorded_at, origin, result FROM work_reviews WHERE task_id=? ORDER BY id DESC LIMIT 5', (row['id'],)).fetchall()
+            checkpoints = self.db.execute('SELECT revision, completed, attempted, next_step, updated_at FROM work_checkpoint_history WHERE task_id=? ORDER BY revision DESC LIMIT 10', (row['id'],)).fetchall()
             tasks.append({'id': row['id'], 'goal': row['goal'], 'paths': json.loads(row['paths']), 'created_at': row['created_at'],
                           'checkpoint': self._checkpoint(row['id']),
+                          'checkpoint_history': [dict(checkpoint) for checkpoint in checkpoints],
                           'last_result': json.loads(row['last_result']) if row['last_result'] else None,
                           'review_history': [{'id': review['id'], 'recorded_at': review['recorded_at'], 'origin': review['origin'],
                                               'result': json.loads(review['result'])} for review in reviews]})
@@ -172,6 +176,7 @@ class WorkManager:
                 revision=work_checkpoints.revision+1, updated_at=excluded.updated_at
                 WHERE work_checkpoints.completed<>excluded.completed OR work_checkpoints.attempted<>excluded.attempted OR work_checkpoints.next_step<>excluded.next_step''',
                 (task_id, *values, now()))
+            self.db.execute('INSERT OR IGNORE INTO work_checkpoint_history(task_id, revision, completed, attempted, next_step, updated_at) SELECT task_id, revision, completed, attempted, next_step, updated_at FROM work_checkpoints WHERE task_id=?', (task_id,))
         return {'task_id': task_id, 'checkpoint': self._checkpoint(task_id)}
 
     def delete(self, task_id):

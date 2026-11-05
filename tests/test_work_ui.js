@@ -130,3 +130,25 @@ test('rendered history keeps the latest visible and folds real earlier evidence 
   vm.runInNewContext(section + '\nrenderWork()', context);
   assert.ok(walk(ids['work-result']).some(n => n.tag === 'p' && /notes changed after this file check/i.test(n.textContent)));
 });
+
+test('progress history is visible without a model review and treats notes as text', () => {
+  class Node {
+    constructor(tag) { this.tag = tag; this.children = []; this.textContent = ''; }
+    append(...nodes) { this.children.push(...nodes); }
+    replaceChildren(...nodes) { this.children = nodes; this.textContent = ''; }
+  }
+  const ids = {};
+  const get = id => ids[id] || (ids[id] = new Node('div'));
+  const make = (tag, text) => { const n = new Node(tag); n.textContent = text == null ? '' : String(text); return n; };
+  const state = {work_available: true, work_tasks: [{id: 1, goal: 'Resume', paths: ['a.py'], last_result: null,
+    checkpoint: {revision: 2}, checkpoint_history: [{revision: 2, updated_at: 'later'},
+      {revision: 1, updated_at: 'earlier', completed: '<script>literal</script>', attempted: 'blocked', next_step: 'test'}]}]};
+  const section = source.slice(start, source.indexOf('\nasync function workAction(', end));
+  vm.runInNewContext(section + '\nrenderWork()', {current: state, workSelected: 1, workInspection: null, checkpointLoadedKey: null,
+    running: false, $: get, el: make, details: () => make('details')});
+  const walk = node => [node, ...node.children.flatMap(walk)];
+  const nodes = walk(ids['work-result']);
+  assert.ok(nodes.some(n => n.tag === 'summary' && /revision 1/i.test(n.textContent)));
+  assert.ok(nodes.some(n => n.tag === 'p' && n.textContent.includes('<script>literal</script>')));
+  assert.equal(nodes.some(n => n.tag === 'script'), false);
+});
